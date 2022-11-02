@@ -13,6 +13,5 @@ RUN apt install -y \
 RUN python -m venv weather
 RUN bash /weather/bin/activate
 RUN pip install pandas numpy scikit-learn seaborn matplotlib torch
-RUN mkdir ./predictor && touch ./predictor/__init__.py
 RUN find -name "*.pyc" -exec rm {} \;
-CMD ["bash"]
+RUN git clone https://github.com/yashpatel5400/stats604-project4.git

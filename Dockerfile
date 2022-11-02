@@ -9,10 +9,10 @@ RUN apt install -y \
     wget \
     curl \
     vim
-RUN python -m pip install poetry
-COPY pyproject.toml poetry.lock ./
+RUN python -m venv weather
+RUN source ./weather/bin/activate
+RUN pip install pandas numpy scikit-learn seaborn matplotlib torch
 RUN mkdir ./predictor && touch ./predictor/__init__.py
-RUN poetry install --no-interaction --ansi
 COPY predictor ./predictor/
 RUN find -name "*.pyc" -exec rm {} \;
 CMD ["bash"]

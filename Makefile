@@ -1,5 +1,5 @@
 make clean:
-	rm -rf raw_data
+	rm -rf raw_data/noaa && rm -rf raw_data/wunderground
 
 make:
 

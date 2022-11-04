@@ -35,7 +35,7 @@ headers = {
     'sec-ch-ua-platform': '"macOS"',
 }
 
-start_date = datetime.datetime.strptime("11/04/22", "%m/%d/%y") # can also use datetime.today() for today's date
+start_date = datetime.datetime.strptime("11/03/22", "%m/%d/%y") # can also use datetime.today() for today's date
 download_window = 5 # download today and the previous (download_window-1) days, for a total of download_window days
 
 for station in stations:

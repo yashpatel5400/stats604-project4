@@ -1,30 +1,12 @@
+import sys
+sys.path.append("../")
+
 import datetime
 import json
 import requests
 import os
 
-stations = [
-    "PANC",
-    "KBOI",
-    "KORD",
-    "KDEN",
-    "KDTW",
-    "PHNL",
-    "KIAH",
-    "KMIA",
-    "KMIC",
-    "KOKC",
-    "KBNA",
-    "KJFK",
-    "KPHX",
-    "KPWM",
-    "KPDX",
-    "KSLC",
-    "KSAN",
-    "KSFO",
-    "KSEA",
-    "KDCA",
-]
+from predictor.utils import stations
 
 headers = {
     'sec-ch-ua': '"Chromium";v="106", "Google Chrome";v="106", "Not;A=Brand";v="99"',

@@ -7,29 +7,7 @@ import datetime
 import pandas as pd
 
 from read_noaa import read_noaa_data_file
-
-stations = [
-    "PANC",
-    "KBOI",
-    "KORD",
-    "KDEN",
-    "KDTW",
-    "PHNL",
-    "KIAH",
-    "KMIA",
-    "KMIC",
-    "KOKC",
-    "KBNA",
-    "KJFK",
-    "KPHX",
-    "KPWM",
-    "KPDX",
-    "KSLC",
-    "KSAN",
-    "KSFO",
-    "KSEA",
-    "KDCA",
-]
+from predictor.utils import stations
 
 station = stations[0]
 

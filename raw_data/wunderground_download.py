@@ -35,24 +35,23 @@ headers = {
     'sec-ch-ua-platform': '"macOS"',
 }
 
-start_date = datetime.datetime.strptime("11/03/22", "%m/%d/%y") # can also use datetime.today() for today's date
-download_window = 5 # download today and the previous (download_window-1) days, for a total of download_window days
-
 for station in stations:
-    full_data = {}
-    for delta in range(download_window):
-        date = start_date - datetime.timedelta(days=delta)
-        date_str = f"{date:%Y%m%d}"
-        params = {
-            'apiKey': 'e1f10a1e78da46f5b10a1e78da96f525',
-            'units': 'e',
-            'startDate': date_str,
-            'endDate': date_str,
-        }
-        response = requests.get(f'https://api.weather.com/v1/location/{station}:9:US/observations/historical.json', params=params, headers=headers)
-        data = json.loads(response.text)["observations"]
-        full_data[date_str] = data
+    download_window = 5 # download today and the previous (download_window-1) days, for a total of download_window days
+    
+    end_date = datetime.datetime.strptime("11/03/22", "%m/%d/%y") # can also use datetime.today() for today's date
+    start_date = end_date - datetime.timedelta(days=(download_window-1))
+    start_date_str = f"{start_date:%Y%m%d}"
+    end_date_str = f"{end_date:%Y%m%d}"
+    
+    params = {
+        'apiKey': 'e1f10a1e78da46f5b10a1e78da96f525',
+        'units': 'e',
+        'startDate': start_date_str,
+        'endDate': end_date_str,
+    }
+    response = requests.get(f'https://api.weather.com/v1/location/{station}:9:US/observations/historical.json', params=params, headers=headers)
+    data = json.loads(response.text)["observations"]
     
     os.makedirs("wunderground", exist_ok=True)
     with open(os.path.join("wunderground", f"{station}.json"), "w") as f:
-        json.dump(full_data, f)
+        json.dump(data, f)

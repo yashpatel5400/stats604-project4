@@ -31,6 +31,6 @@ def load_data(station=None):
     station_to_noaa_data = {}
     station_to_wunderground_data = {}
     for station in stations:
-        station_to_noaa_data[station] = pd.from_csv(os.path.join("..", "noaa", f"{station}.csv"))
-        station_to_wunderground_data[station] = pd.from_csv(os.path.join("..", "wunderground", f"{station}.csv"))
+        station_to_noaa_data[station] = pd.read_csv(os.path.join("..", "data", "noaa", f"{station}.csv"))
+        station_to_wunderground_data[station] = pd.read_csv(os.path.join("..", "data", "wunderground", f"{station}.csv"))
     return station_to_noaa_data, station_to_wunderground_data

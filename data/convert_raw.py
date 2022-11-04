@@ -6,7 +6,7 @@ import json
 import datetime
 import pandas as pd
 
-from predictor.read_noaa import read_noaa_data_file
+from read_noaa import read_noaa_data_file
 
 stations = [
     "PANC",

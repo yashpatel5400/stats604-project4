@@ -8,7 +8,7 @@ import os
 
 from predictor.utils import stations
 
-def download_wunderground(end_date_str="11/03/22", download_window=5):
+def fetch_wunderground(end_date_str="11/03/22", download_window=5):
     """Downloads data from Wunderground from end_date-download_window to end_date. Note that
     using too large a download_window (i.e. > 20) will cause this to error out
     """
@@ -38,7 +38,7 @@ def download_wunderground(end_date_str="11/03/22", download_window=5):
 
 if __name__ == "__main__":
     for station in stations:
-        data = download_wunderground(end_date_str=datetime.today(), download_window=5)
+        data = fetch_wunderground(end_date_str=datetime.today(), download_window=5)
         os.makedirs("wunderground", exist_ok=True)
         with open(os.path.join("wunderground", f"{station}.json"), "w") as f:
             json.dump(data, f)

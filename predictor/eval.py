@@ -7,8 +7,10 @@ import datetime
 import pickle
 import pandas as pd
 import numpy as np
+import matplotlib.pyplot as plt
 
 from raw_data import wunderground_download
+from models.predictor_zeros import ZerosPredictor
 
 def get_station_eval_task(station, prediction_day):
     noaa, _ = utils.load_data()
@@ -63,9 +65,13 @@ def get_full_eval_task(prediction_day):
 
 def eval(model):
     mses = []
-    for prediction_day in range(-375, -10):
+    for prediction_day in range(-375, -300):
         eval_data, eval_target = get_full_eval_task(prediction_day)
         predictions = model.predict(eval_data)
         mse = (np.square(eval_target - predictions)).mean()
         mses.append(mse)
     return mses
+
+if __name__ == "__main__":
+    zeros_predictor = ZerosPredictor()
+    mses = eval(zeros_predictor)

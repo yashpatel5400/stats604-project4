@@ -9,4 +9,7 @@ make predictions:
 make rawdata:
 	cd raw_data && python noaa_download.py && python wunderground_download.py
 
+make data:
+	cd data && python convert_raw.py
+
 make report:

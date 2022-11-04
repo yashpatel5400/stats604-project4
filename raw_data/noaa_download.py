@@ -1,4 +1,6 @@
 import urllib.request
+import json
+import os
 
 station_code_to_noaa = {
     "PANC": "USW00026451",
@@ -25,5 +27,8 @@ station_code_to_noaa = {
 
 if __name__ == "__main__":
     base_url = "https://www.ncei.noaa.gov/pub/data/ghcn/daily/all/"
-    urls = [f"{base_url}/{station_code_to_noaa[station_code]}.dly" for station_code in station_code_to_noaa]
-    [urllib.request.urlretrieve(url, url.split("/")[-1]) for url in urls]
+
+    os.makedirs("noaa", exist_ok=True)
+    for station_code in station_code_to_noaa:
+        url = f"{base_url}/{station_code_to_noaa[station_code]}.dly"
+        urllib.request.urlretrieve(url, os.path.join("noaa", f"{station_code}.dly"))

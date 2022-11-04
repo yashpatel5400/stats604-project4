@@ -1,3 +1,5 @@
+import urllib.request
+
 station_code_to_noaa = {
     "PANC": "USW00026451",
     "KBOI": "USW00024131",
@@ -20,3 +22,7 @@ station_code_to_noaa = {
     "KSEA": "USW00024233",
     "KDCA": "USW00013743",
 }
+
+base_url = "https://www.ncei.noaa.gov/pub/data/ghcn/daily/all/"
+urls = [f"{base_url}/{station_code_to_noaa[station_code]}.dly" for station_code in station_code_to_noaa]
+[urllib.request.urlretrieve(url, url.split("/")[-1]) for url in urls]

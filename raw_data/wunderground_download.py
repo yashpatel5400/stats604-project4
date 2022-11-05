@@ -38,7 +38,7 @@ def fetch_wunderground(station, end_date_str="2022-11-03", download_window=5):
 
 if __name__ == "__main__":
     for station in stations:
-        data = fetch_wunderground(station=station, end_date_str=datetime.today(), download_window=5)
+        data = fetch_wunderground(station=station, end_date_str= str(datetime.date.today()), download_window=5)
         os.makedirs("wunderground", exist_ok=True)
         with open(os.path.join("wunderground", f"{station}.json"), "w") as f:
             json.dump(data, f)

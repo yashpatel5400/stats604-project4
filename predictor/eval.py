@@ -12,66 +12,95 @@ import matplotlib.pyplot as plt
 from raw_data import wunderground_download
 from models.predictor_zeros import ZerosPredictor
 
-def get_station_eval_task(station, prediction_day):
+def prepare_wunderground_eval_data(station, start_date, eval_len):
+    cache_dir = "eval"
+    os.makedirs(cache_dir, exist_ok=True)
+    cache_fn = os.path.join(cache_dir, f"{station}-{start_date:%Y-%m-%d}-{eval_len}.csv")
+    if os.path.exists(cache_fn):
+        full_wunderground = pd.read_csv(cache_fn, index_col=0)
+        full_wunderground.index = pd.to_datetime(full_wunderground.index)
+    else:
+        download_window = 5
+        window_days = datetime.timedelta(days=download_window)
+        num_requests = eval_len // download_window
+
+        full_wunderground = []
+        for i in range(num_requests + 3): # need to *include* one before, the current, and one after for padding
+            prediction_date = start_date + i * window_days
+            wunderground_raw_data = wunderground_download.fetch_wunderground(station=station, end_date_str=f"{prediction_date:%Y-%m-%d}", download_window=download_window)
+            wunderground_data = pd.DataFrame(wunderground_raw_data)
+            wunderground_data["date"] = wunderground_data["valid_time_gmt"].apply(lambda d: datetime.datetime.fromtimestamp(d))
+            wunderground_data = wunderground_data.set_index("date")
+            full_wunderground.append(wunderground_data)
+        full_wunderground = pd.concat(full_wunderground)
+        full_wunderground.to_csv(cache_fn)
+    return full_wunderground
+
+def prepare_full_eval_data(start_eval_date, eval_len):
     noaa, _ = utils.load_data()
+    full_eval_data = {}
+    for station in utils.stations:
+        full_eval_data[station] = {}
+        full_eval_data[station]["noaa"] = noaa[station]
+        full_eval_data[station]["wunderground"] = prepare_wunderground_eval_data(station, start_eval_date, eval_len)
+    return full_eval_data
 
-    columns = ["TMIN", "TAVG", "TMAX"]
-    prediction_window = [prediction_day + 1, prediction_day + 5]
-    target = noaa[station].iloc[prediction_window[0]:prediction_window[1]+1][columns]
+def get_station_eval_task(full_eval_data, prediction_date, station):
+    full_noaa = full_eval_data[station]["noaa"]
+    full_wunderground = full_eval_data[station]["wunderground"]
+    strict_cutoff = prediction_date.replace(hour=12)
 
-    # *no* data can be used for prediction after 12:00 on the prediction day
-    prediction_date = noaa[station].iloc[prediction_day].name
-    strict_cutoff = datetime.datetime.strptime(prediction_date, "%Y-%m-%d")
-    strict_cutoff = strict_cutoff.replace(hour=12)
-
-    # for everything up to ~3 days ago, we will have NOAA data
     noaa_cutoff_len = 3
-    noaa_cutoff = prediction_day - noaa_cutoff_len
-    cut_noaa = noaa["PANC"].iloc[:noaa_cutoff+1]
+    noaa_cutoff = prediction_date - datetime.timedelta(days=noaa_cutoff_len)
+    cut_noaa = full_noaa.iloc[full_noaa.index < noaa_cutoff]
 
-    # for the more recent days, we use Wunderground
-    recent_days = wunderground_download.fetch_wunderground(station=station, end_date_str=prediction_date, download_window=noaa_cutoff_len+2) # one day of overlap w/ NOAA
-    wunderground_data = pd.DataFrame(recent_days)
-    wunderground_data["date"] = wunderground_data["valid_time_gmt"].apply(lambda d: datetime.datetime.fromtimestamp(d))
-    wunderground_data = wunderground_data.set_index("date")
-    cut_wunderground = wunderground_data[wunderground_data.index < strict_cutoff]
+    padded_noaa_cutoff = noaa_cutoff - datetime.timedelta(days=1) # give one day of overlap for Wunderground data
+    cut_wunderground = full_wunderground.iloc[np.logical_and(padded_noaa_cutoff <= full_wunderground.index, full_wunderground.index < strict_cutoff)]
 
+    forecast_horizon = 5
+    target = []
+    for forecast_day in range(1, forecast_horizon + 1):
+        forecast_date = prediction_date + datetime.timedelta(days=forecast_day)
+        wunderground_forecast = full_wunderground.iloc[np.logical_and(forecast_date <= full_wunderground.index, full_wunderground.index < forecast_date + datetime.timedelta(days=1))]
+        temps = wunderground_forecast["temp"]
+        if len(wunderground_forecast) == 0:
+            print(full_wunderground.iloc[-1].name)
+            print(f"{station} -- {forecast_date:%Y-%m-%d}")
+        target += [temps.max(), temps.min(), temps.mean()]
+    target = np.array(target)
     data = {
         "noaa": cut_noaa,
         "wunderground": cut_wunderground,
     }
     return data, target
 
-def get_full_eval_task(prediction_day):
-    cache_dir = "eval"
-    os.makedirs(cache_dir, exist_ok=True)
-    cache_fn = os.path.join(cache_dir, f"prediction_day.pkl")
-    if os.path.exists(cache_fn):
-        with open(cache_fn, "rb") as f:
-            full_data, full_target = pickle.load(f)
-    else:
-        full_data = {}
-        full_target = []
-        for station in utils.stations:
-            data, target = get_station_eval_task(station, prediction_day)
-            
-            full_data[station] = data
-            full_target.append(target.values.flatten())
-        full_target = np.array(full_target).flatten()
-        with open(cache_fn, "wb") as f:
-            pickle.dump((full_data, full_target), f)
-
+def get_eval_task(full_eval_data, prediction_date):
+    full_data = {}
+    full_target = []
+    for station in utils.stations:
+        data, target = get_station_eval_task(full_eval_data, prediction_date, station)
+        full_data[station] = data
+        full_target.append(target.flatten())
+    full_target = np.array(full_target).flatten()
     return full_data, full_target
 
-def eval(model):
+def eval(start_eval_date, eval_len, model):
+    full_eval_data = prepare_full_eval_data(start_eval_date, eval_len)
+    
     mses = []
-    for prediction_day in range(-375, -300):
-        eval_data, eval_target = get_full_eval_task(prediction_day)
+    for day_offset in range(eval_len):
+        prediction_date = start_eval_date + datetime.timedelta(days=day_offset)
+        eval_data, eval_target = get_eval_task(full_eval_data, prediction_date)
         predictions = model.predict(eval_data)
         mse = (np.square(eval_target - predictions)).mean()
         mses.append(mse)
     return mses
 
 if __name__ == "__main__":
+    start_eval_str = "2021-10-01" # when eval period starts (must follow %Y-%m-%d format)
+    start_eval_date = datetime.datetime.strptime(start_eval_str, "%Y-%m-%d") 
+    eval_len = 2 # how many days we running evaluation for
+
     zeros_predictor = ZerosPredictor()
-    mses = eval(zeros_predictor)
+    mses = eval(start_eval_date, eval_len, zeros_predictor)
+    print(mses)

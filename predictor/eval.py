@@ -97,10 +97,6 @@ def eval(start_eval_date, eval_len, model):
     for day_offset in range(eval_len):
         prediction_date = start_eval_date + datetime.timedelta(days=day_offset)
         eval_data, eval_target = get_eval_task(full_eval_data, prediction_date)
-        print(prediction_date)
-        print(eval_target)
-        print("---------------------")
-        
         predictions = model.predict(eval_data)
         mse = (np.square(eval_target - predictions)).mean()
         mses.append(mse)
@@ -113,4 +109,3 @@ if __name__ == "__main__":
 
     zeros_predictor = ZerosPredictor()
     mses = eval(start_eval_date, eval_len, zeros_predictor)
-    print(mses)

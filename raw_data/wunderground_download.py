@@ -36,34 +36,6 @@ def fetch_wunderground(station, end_date_str="2022-11-03", download_window=5):
     response = requests.get(f'https://api.weather.com/v1/location/{station}:9:US/observations/historical.json', params=params, headers=headers)
     return json.loads(response.text)["observations"]
 
-def fetch_latlon(station):
-    dummy_url = f"https://www.wunderground.com/history/daily/{station}/date/2021-11-05"
-    ans = requests.get(dummy_url)
-    script_vals = ans.text.split("&q;:")
-    extract_lat_or_lon = lambda lat_or_lon : float([script_vals[i+1] for i, v in enumerate(script_vals) if lat_or_lon in v][0].split(",")[0])
-    return (extract_lat_or_lon("latitude"), extract_lat_or_lon("longitude"))
-
-def fetch_timezone(station):
-    lat_lon = fetch_latlon(station)
-
-    headers = {
-        'sec-ch-ua': '"Google Chrome";v="107", "Chromium";v="107", "Not=A?Brand";v="24"',
-        'Accept': 'application/json, text/plain, */*',
-        'Referer': 'https://www.wunderground.com/',
-        'sec-ch-ua-mobile': '?0',
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.0.0 Safari/537.36',
-        'sec-ch-ua-platform': '"macOS"',
-    }
-
-    params = {
-        'apiKey': 'e1f10a1e78da46f5b10a1e78da96f525',
-        'geocode': f'{round(lat_lon[0], 2)},{round(lat_lon[1], 2)}',
-        'format': 'json',
-    }
-
-    response = requests.get('https://api.weather.com/v3/dateTime', params=params, headers=headers)
-    return json.loads(response.text)
-
 if __name__ == "__main__":
     for station in stations:
         data = fetch_wunderground(station=station, end_date_str= str(datetime.date.today()), download_window=5)

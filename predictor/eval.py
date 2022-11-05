@@ -2,7 +2,6 @@ import sys
 sys.path.append("../")
 
 import os
-import utils
 import datetime
 import pickle
 import pytz
@@ -10,9 +9,9 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 
-import utils
 from raw_data import wunderground_download
-from models.predictor_zeros import ZerosPredictor
+import predictor.utils as utils
+from predictor.models.predictor_zeros import ZerosPredictor
 
 def prepare_wunderground_eval_data(station, start_date, eval_len):
     cache_dir = "eval"

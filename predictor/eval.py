@@ -5,10 +5,12 @@ import os
 import utils
 import datetime
 import pickle
+import pytz
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 
+import utils
 from raw_data import wunderground_download
 from models.predictor_zeros import ZerosPredictor
 
@@ -31,6 +33,8 @@ def prepare_wunderground_eval_data(station, start_date, eval_len):
             wunderground_data = pd.DataFrame(wunderground_raw_data)
             wunderground_data["date"] = wunderground_data["valid_time_gmt"].apply(lambda d: datetime.datetime.fromtimestamp(d))
             wunderground_data = wunderground_data.set_index("date")
+            # ARGHHH, the column is named "GMT" but it's actually the local time zone!!
+            wunderground_data.index = wunderground_data.index.tz_localize("EST")
             full_wunderground.append(wunderground_data)
         full_wunderground = pd.concat(full_wunderground)
         full_wunderground.to_csv(cache_fn)
@@ -48,25 +52,27 @@ def prepare_full_eval_data(start_eval_date, eval_len):
 def get_station_eval_task(full_eval_data, prediction_date, station):
     full_noaa = full_eval_data[station]["noaa"]
     full_wunderground = full_eval_data[station]["wunderground"]
-    strict_cutoff = prediction_date.replace(hour=12)
+
+    est = pytz.timezone('US/Eastern')
+    strict_cutoff = est.localize(prediction_date.replace(hour=12)) # all the predictions are going to be made noon EST
 
     noaa_cutoff_len = 3
     noaa_cutoff = prediction_date - datetime.timedelta(days=noaa_cutoff_len)
     cut_noaa = full_noaa.iloc[full_noaa.index < noaa_cutoff]
 
-    padded_noaa_cutoff = noaa_cutoff - datetime.timedelta(days=1) # give one day of overlap for Wunderground data
+    padded_noaa_cutoff = est.localize(noaa_cutoff - datetime.timedelta(days=1)) # give one day of overlap for Wunderground data
     cut_wunderground = full_wunderground.iloc[np.logical_and(padded_noaa_cutoff <= full_wunderground.index, full_wunderground.index < strict_cutoff)]
 
+    local_timezone = pytz.timezone(utils.fetch_timezone(station))
     forecast_horizon = 5
     target = []
     for forecast_day in range(1, forecast_horizon + 1):
-        forecast_date = prediction_date + datetime.timedelta(days=forecast_day)
-        wunderground_forecast = full_wunderground.iloc[np.logical_and(forecast_date <= full_wunderground.index, full_wunderground.index < forecast_date + datetime.timedelta(days=1))]
+        forecast_date_start = local_timezone.localize(prediction_date + datetime.timedelta(days=forecast_day))
+        forecast_date_end = local_timezone.localize(prediction_date + datetime.timedelta(days=forecast_day) + datetime.timedelta(days=1))
+        wunderground_forecast = full_wunderground.iloc[np.logical_and(forecast_date_start <= full_wunderground.index, full_wunderground.index < forecast_date_end)]
         temps = wunderground_forecast["temp"]
-        if len(wunderground_forecast) == 0:
-            print(full_wunderground.iloc[-1].name)
-            print(f"{station} -- {forecast_date:%Y-%m-%d}")
         target += [temps.max(), temps.min(), temps.mean()]
+    
     target = np.array(target)
     data = {
         "noaa": cut_noaa,
@@ -91,6 +97,10 @@ def eval(start_eval_date, eval_len, model):
     for day_offset in range(eval_len):
         prediction_date = start_eval_date + datetime.timedelta(days=day_offset)
         eval_data, eval_target = get_eval_task(full_eval_data, prediction_date)
+        print(prediction_date)
+        print(eval_target)
+        print("---------------------")
+        
         predictions = model.predict(eval_data)
         mse = (np.square(eval_target - predictions)).mean()
         mses.append(mse)
@@ -99,7 +109,7 @@ def eval(start_eval_date, eval_len, model):
 if __name__ == "__main__":
     start_eval_str = "2021-10-01" # when eval period starts (must follow %Y-%m-%d format)
     start_eval_date = datetime.datetime.strptime(start_eval_str, "%Y-%m-%d") 
-    eval_len = 2 # how many days we running evaluation for
+    eval_len = 10 # how many days we running evaluation for
 
     zeros_predictor = ZerosPredictor()
     mses = eval(start_eval_date, eval_len, zeros_predictor)

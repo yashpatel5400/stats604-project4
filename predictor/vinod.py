@@ -8,6 +8,8 @@ __status__ = "Dev"
 
 import pandas as pd
 import datetime
+from datetime import date
+import numpy as np
 
 import utils
 
@@ -19,15 +21,21 @@ def format_output(date_to_prediction):
     return f"{start_date}, {', '.join([', '.join(date_to_prediction[date].values.flatten().astype(str)) for date in date_to_prediction])}"
     
 if __name__ == '__main__':
-    start_date = datetime.datetime.strptime("10/10/11", "%m/%d/%y")
-    dates = [start_date + datetime.timedelta(days=1 + delta) for delta in range(5)]
-    
-    df = pd.read_csv('data/wunderground/KBNA.csv')
-    df['date'] = pd.to_datetime(df['date']).dt.date
-    print(df.groupby(['date'], sort=False)['temp'].max())
-    print(df.groupby(['date'], sort=False)['temp'].min())
-    print(df.groupby(['date'], sort=False)['temp'].mean())
+    current_date = date.today()
+    forward_dates = [current_date + datetime.timedelta(days=1 + delta) for delta in range(5)]
 
-    predictions = {date: pd.DataFrame(0, columns = ["Min", "Avg", "Max"], index = utils.stations) for date in dates}
+    stations_data = []
+    for station in utils.stations:
+        df = pd.read_csv('data/wunderground/' + station + '.csv')
+        df['date'] = pd.to_datetime(df['date']).dt.date
+        temp_max = df.groupby(['date'], sort=False)['temp'].max()
+        print(temp_max)
+        temp_min = df.groupby(['date'], sort=False)['temp'].min()
+        temp_mean = df.groupby(['date'], sort=False)['temp'].mean()
+        stations_data.append([temp_min[-1], round(temp_mean[-1], 1), temp_max[-1]])
+
+    stations_data = np.array(stations_data) 
+
+    predictions = {date: pd.DataFrame(stations_data, columns = ["Min", "Avg", "Max"], index = utils.stations) for date in forward_dates}
     output = format_output(predictions)
     print(output)

@@ -109,3 +109,4 @@ if __name__ == "__main__":
 
     zeros_predictor = ZerosPredictor()
     mses = eval(start_eval_date, eval_len, zeros_predictor)
+    print(mses)

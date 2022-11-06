@@ -12,6 +12,7 @@ import matplotlib.pyplot as plt
 from raw_data import wunderground_download
 import predictor.utils as utils
 from predictor.models.predictor_zeros import ZerosPredictor
+from predictor.models.vinod import PrevDayPredictor
 
 def prepare_wunderground_eval_data(station, start_date, eval_len):
     cache_dir = "eval"
@@ -106,6 +107,6 @@ if __name__ == "__main__":
     start_eval_date = datetime.datetime.strptime(start_eval_str, "%Y-%m-%d") 
     eval_len = 10 # how many days we running evaluation for
 
-    zeros_predictor = ZerosPredictor()
+    zeros_predictor = PrevDayPredictor()
     mses = eval(start_eval_date, eval_len, zeros_predictor)
     print(mses)

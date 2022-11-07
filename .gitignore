@@ -1,7 +1,7 @@
 # Raw data
 raw_data/
 data/
-eval/
+predictor/eval/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

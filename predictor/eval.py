@@ -15,6 +15,7 @@ from predictor.models.predictor_zeros import ZerosPredictor
 from predictor.models.vinod import PrevDayPredictor
 from predictor.models.unique import HistoricAveragePredictor
 from predictor.models.seamus import BasicOLSPredictor
+from predictor.models.vinod import PrevDayHistoricalPredictor
 
 def prepare_wunderground_eval_data(station, start_date, eval_len):
     cache_dir = "eval"
@@ -105,10 +106,10 @@ def eval(start_eval_date, eval_len, model):
     return mses
 
 if __name__ == "__main__":
-    start_eval_str = "2021-11-01" # when eval period starts (must follow %Y-%m-%d format)
+    start_eval_str = "2021-10-01" # when eval period starts (must follow %Y-%m-%d format)
     start_eval_date = datetime.datetime.strptime(start_eval_str, "%Y-%m-%d") 
     eval_len = 10 # how many days we running evaluation for
 
-    zeros_predictor = BasicOLSPredictor()
+    zeros_predictor = PrevDayHistoricalPredictor()
     mses = eval(start_eval_date, eval_len, zeros_predictor)
     print(mses)

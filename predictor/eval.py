@@ -13,7 +13,7 @@ from raw_data import wunderground_download
 import predictor.utils as utils
 from predictor.models.predictor_zeros import ZerosPredictor
 from predictor.models.vinod import PrevDayPredictor
-from predictor.models.unique import HistoricAveragePredictor
+from predictor.models.unique import ArimaPredictor
 from predictor.models.seamus import BasicOLSPredictor
 from predictor.models.vinod import PrevDayHistoricalPredictor
 
@@ -106,10 +106,10 @@ def eval(start_eval_date, eval_len, model):
     return mses
 
 if __name__ == "__main__":
-    start_eval_str = "2021-10-01" # when eval period starts (must follow %Y-%m-%d format)
+    start_eval_str = "2021-11-19" # when eval period starts (must follow %Y-%m-%d format)
     start_eval_date = datetime.datetime.strptime(start_eval_str, "%Y-%m-%d") 
     eval_len = 10 # how many days we running evaluation for
 
-    zeros_predictor = PrevDayHistoricalPredictor()
+    zeros_predictor = ArimaPredictor()
     mses = eval(start_eval_date, eval_len, zeros_predictor)
     print(mses)

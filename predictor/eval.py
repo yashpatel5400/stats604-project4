@@ -14,6 +14,7 @@ import predictor.utils as utils
 from predictor.models.predictor_zeros import ZerosPredictor
 from predictor.models.vinod import PrevDayPredictor
 from predictor.models.unique import ArimaPredictor
+from predictor.models.unique import HistoricAveragePredictor
 from predictor.models.seamus import BasicOLSPredictor
 from predictor.models.vinod import PrevDayHistoricalPredictor
 
@@ -100,7 +101,10 @@ def eval(start_eval_date, eval_len, model):
     for day_offset in range(eval_len):
         prediction_date = start_eval_date + datetime.timedelta(days=day_offset)
         eval_data, eval_target = get_eval_task(full_eval_data, prediction_date)
+        #print("eval_target", eval_target.flatten())
+        
         predictions = model.predict(eval_data)
+        #print("predictions", predictions.flatten())
         mse = (np.square(eval_target - predictions)).mean()
         mses.append(mse)
     return mses
@@ -110,6 +114,6 @@ if __name__ == "__main__":
     start_eval_date = datetime.datetime.strptime(start_eval_str, "%Y-%m-%d") 
     eval_len = 10 # how many days we running evaluation for
 
-    zeros_predictor = ArimaPredictor()
+    zeros_predictor = PrevDayHistoricalPredictor()
     mses = eval(start_eval_date, eval_len, zeros_predictor)
     print(mses)

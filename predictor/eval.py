@@ -75,7 +75,7 @@ def get_station_eval_task(full_eval_data, prediction_date, station):
         forecast_date_end = local_timezone.localize(prediction_date + datetime.timedelta(days=forecast_day) + datetime.timedelta(days=1))
         wunderground_forecast = full_wunderground.iloc[np.logical_and(forecast_date_start <= full_wunderground.index, full_wunderground.index < forecast_date_end)]
         temps = wunderground_forecast["temp"]
-        target += [temps.min(), temps.avg(), temps.max()]
+        target += [temps.min(), temps.mean(), temps.max()]
     
     target = np.array(target)
     data = {

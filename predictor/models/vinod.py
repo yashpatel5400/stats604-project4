@@ -19,7 +19,7 @@ class PrevDayPredictor(Predictor):
             temp_max = df.groupby(['date_col'], sort=False)['temp'].max()
             temp_min = df.groupby(['date_col'], sort=False)['temp'].min()
             temp_mean = df.groupby(['date_col'], sort=False)['temp'].mean()
-            stations_data.append([temp_max[-1], temp_min[-1], round(temp_mean[-1],1)]*5)
+            stations_data.append([temp_min[-1], round(temp_mean[-1],2), temp_max[-1]]*5)
 
         stations_data = np.array(stations_data).flatten()
         return stations_data

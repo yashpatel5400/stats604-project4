@@ -5,7 +5,7 @@ import numpy as np
 import sys
 from matplotlib import pyplot as plt
 import utils
-from statsmodels.tsa.arima_model import ARIMA
+from statsmodels.tsa.arima.model import ARIMA
 from predictor.models.predictor_scaffold import Predictor
 
 
@@ -20,11 +20,11 @@ class HistoricAveragePredictor(Predictor):
         stations_data = []
         for station in utils.stations:
             noaa = data[station]["noaa"]
-            noaa = noaa.loc[:, [ "TMAX", "TMIN", "TAVG"]].dropna(axis =0)
+            noaa = noaa.loc[:, [ "TMIN", "TAVG", "TMAX"]].dropna(axis =0)
             noaa = noaa*0.18+32.0
             current_date = noaa.index[-1]
        
-            df = noaa.groupby(by=[noaa.index.month, noaa.index.day]).median().round(2)
+            df = noaa.groupby(by=[noaa.index.month, noaa.index.day]).mean().round(2)
             
             for i in range(1, 6):
                 date_ = (current_date + pd.DateOffset(days=i))
@@ -58,13 +58,13 @@ class ArimaPredictor(Predictor):
            
         
      
-            min_model = ARIMA(noaa.TMIN, order=(2,1,2)).fit(disp=False)
+            min_model = ARIMA(noaa.TMIN, order=(2,1,2)).fit()
             #min_model.predict().plot(label = "prediction")
             #noaa.TMIN.plot(label = "true")
             #plt.legend()
             #plt.show()
-            avg_model = ARIMA(noaa.TAVG, order=(2,1,2)).fit(disp=False)
-            max_model = ARIMA(noaa.TMAX, order=(2,1,2)).fit(disp=False)
+            avg_model = ARIMA(noaa.TAVG, order=(2,1,2)).fit()
+            max_model = ARIMA(noaa.TMAX, order=(2,1,2)).fit()
             
             min_fc = min_model.forecast(steps = 5)
             avg_fc = avg_model.forecast(steps = 5)
@@ -72,7 +72,7 @@ class ArimaPredictor(Predictor):
 
         
             
-            stations_data.append(np.vstack((max_fc.values, min_fc.values, avg_fc.values)).flatten())
+            stations_data.append(np.vstack((min_fc.values, avg_fc.values, max_fc.values)).flatten())
             
             
             

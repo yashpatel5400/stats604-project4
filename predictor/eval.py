@@ -49,7 +49,7 @@ def prepare_wunderground_eval_data(station, start_date, eval_len, wunderground_l
         full_wunderground = pd.read_csv(cache_fn, index_col=0)
         full_wunderground.index = pd.to_datetime(full_wunderground.index)
     else:
-        download_window = 5
+        download_window = 30
         window_days = datetime.timedelta(days=download_window)
         num_future_requests = eval_len // download_window
         num_past_requests = -(wunderground_lookback // download_window)
@@ -152,7 +152,7 @@ def eval(model):
     }
     """
     
-    start_year = 2020
+    start_year = 2015
     num_years = 1
     mses_per_year = {}
     wunderground_lookback = 365 # how many days back to return of wunderground data

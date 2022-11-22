@@ -8,6 +8,9 @@ import pytz
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import time
+
+from multiprocessing import Process
 
 from raw_data import wunderground_download
 import predictor.utils as utils
@@ -18,20 +21,23 @@ from predictor.models.unique import HistoricAveragePredictor
 from predictor.models.seamus import BasicOLSPredictor
 from predictor.models.vinod import PrevDayHistoricalPredictor
 
-def prepare_wunderground_eval_data(station, start_date, eval_len):
+def prepare_wunderground_eval_data(station, start_date, eval_len, wunderground_lookback):
     cache_dir = "eval"
     os.makedirs(cache_dir, exist_ok=True)
-    cache_fn = os.path.join(cache_dir, f"{station}-{start_date:%Y-%m-%d}-{eval_len}.csv")
+    cache_fn = os.path.join(cache_dir, f"{station}-{start_date:%Y-%m-%d}-{eval_len}-{wunderground_lookback}.csv")
+
+    start = time.time()
     if os.path.exists(cache_fn):
         full_wunderground = pd.read_csv(cache_fn, index_col=0)
         full_wunderground.index = pd.to_datetime(full_wunderground.index)
     else:
         download_window = 5
         window_days = datetime.timedelta(days=download_window)
-        num_requests = eval_len // download_window
+        num_future_requests = eval_len // download_window
+        num_past_requests = -(wunderground_lookback // download_window)
 
         full_wunderground = []
-        for i in range(num_requests + 3): # need to *include* one before, the current, and one after for padding
+        for i in range(num_past_requests, num_future_requests + 3): # need to *include* one before, the current, and one after for padding
             prediction_date = start_date + i * window_days
             wunderground_raw_data = wunderground_download.fetch_wunderground(station=station, end_date_str=f"{prediction_date:%Y-%m-%d}", download_window=download_window)
             wunderground_data = pd.DataFrame(wunderground_raw_data)
@@ -39,18 +45,20 @@ def prepare_wunderground_eval_data(station, start_date, eval_len):
             wunderground_data = wunderground_data.set_index("date")
             # ARGHHH, the column is named "GMT" but it's actually the local time zone!!
             wunderground_data.index = wunderground_data.index.tz_localize("EST")
-            full_wunderground.append(wunderground_data)
+            full_wunderground.append(wunderground_data) 
         full_wunderground = pd.concat(full_wunderground)
         full_wunderground.to_csv(cache_fn)
+    end = time.time()
+    print(f"Scraped data in: {end - start} s")
     return full_wunderground
 
-def prepare_full_eval_data(start_eval_date, eval_len):
+def prepare_full_eval_data(start_eval_date, eval_len, wunderground_lookback):
     noaa, _ = utils.load_data()
     full_eval_data = {}
     for station in utils.stations:
         full_eval_data[station] = {}
         full_eval_data[station]["noaa"] = noaa[station]
-        full_eval_data[station]["wunderground"] = prepare_wunderground_eval_data(station, start_eval_date, eval_len)
+        full_eval_data[station]["wunderground"] = prepare_wunderground_eval_data(station, start_eval_date, eval_len, wunderground_lookback)
     return full_eval_data
 
 def get_station_eval_task(full_eval_data, prediction_date, station):
@@ -64,8 +72,7 @@ def get_station_eval_task(full_eval_data, prediction_date, station):
     noaa_cutoff = prediction_date - datetime.timedelta(days=noaa_cutoff_len)
     cut_noaa = full_noaa.iloc[full_noaa.index < noaa_cutoff]
 
-    padded_noaa_cutoff = est.localize(noaa_cutoff - datetime.timedelta(days=1)) # give one day of overlap for Wunderground data
-    cut_wunderground = full_wunderground.iloc[np.logical_and(padded_noaa_cutoff <= full_wunderground.index, full_wunderground.index < strict_cutoff)]
+    cut_wunderground = full_wunderground.iloc[full_wunderground.index < strict_cutoff]
 
     local_timezone = pytz.timezone(utils.fetch_timezone(station))
     forecast_horizon = 5
@@ -94,26 +101,55 @@ def get_eval_task(full_eval_data, prediction_date):
     full_target = np.array(full_target).flatten()
     return full_data, full_target
 
-def eval(start_eval_date, eval_len, model):
-    full_eval_data = prepare_full_eval_data(start_eval_date, eval_len)
+def eval_single_window(start_eval_date, eval_len, wunderground_lookback, model):
+    """Runs an evaluation for a window of [start_eval_date, start_eval_date + eval_len] 
+    where eval_len is to be specified as the number of days
+    
+    args:
+        start_eval_date: (datetime.datetime) day of first *evaluation*, i.e. first day where predictions are *made*
+            Note: that EACH eval day is evaluated for 5 days forward!
+        eval_len: how many eval days to include
+        wunderground_lookback: how far (in days) *before the first eval day* to extend the Wunderground data
+            Note: data scraping will take time proportional to this number
+    
+    """
+    full_eval_data = prepare_full_eval_data(start_eval_date, eval_len, wunderground_lookback)
     
     mses = []
     for day_offset in range(eval_len):
         prediction_date = start_eval_date + datetime.timedelta(days=day_offset)
         eval_data, eval_target = get_eval_task(full_eval_data, prediction_date)
-        #print("eval_target", eval_target.flatten())
         
         predictions = model.predict(eval_data)
-        #print("predictions", predictions.flatten())
         mse = (np.square(eval_target - predictions)).mean()
         mses.append(mse)
     return mses
 
-if __name__ == "__main__":
-    start_eval_str = "2021-11-19" # when eval period starts (must follow %Y-%m-%d format)
-    start_eval_date = datetime.datetime.strptime(start_eval_str, "%Y-%m-%d") 
+def eval(model):
+    """Runs evaluations for a windows from 11/30 - 12/10 for multiple years (default: 10 years) 
+    using the specified model as the predictor. Returns MSEs as a 20 x 15 matrix, with each station a row
+    across the 10 years with the year as the key of a dict, i.e.:
+    
+    {
+        2012: [MSEs],
+        2013: [MSEs],
+        ...
+    }
+    """
+    
+    start_year = 2020
+    num_years = 1
+    mses_per_year = {}
+    wunderground_lookback = 365 # how many days back to return of wunderground data
     eval_len = 10 # how many days we running evaluation for
+    
+    for year in range(start_year, start_year + num_years):
+        start_eval_str = f"{year}-11-30" # when eval period starts (must follow %Y-%m-%d format)
+        start_eval_date = datetime.datetime.strptime(start_eval_str, "%Y-%m-%d") 
+        mses_per_year[year] = eval_single_window(start_eval_date, eval_len, wunderground_lookback, model)
+    return mses_per_year
 
-    zeros_predictor = PrevDayHistoricalPredictor()
-    mses = eval(start_eval_date, eval_len, zeros_predictor)
-    print(mses)
+if __name__ == "__main__":
+    model = PrevDayHistoricalPredictor()
+    eval_mses = eval(model)
+    print(eval_mses)

@@ -10,7 +10,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import time
 
-from multiprocessing import Process
+import multiprocessing
+from multiprocessing.pool import Pool
 
 from raw_data import wunderground_download
 import predictor.utils as utils
@@ -20,6 +21,23 @@ from predictor.models.unique import ArimaPredictor
 from predictor.models.unique import HistoricAveragePredictor
 from predictor.models.seamus import BasicOLSPredictor
 from predictor.models.vinod import PrevDayHistoricalPredictor
+
+def populate_wunderground_data(i, start_date, window_days, station, download_window):
+    prediction_date = start_date + i * window_days
+    end_date_str = f"{prediction_date:%Y-%m-%d}"
+    print(f"Requesting date: {end_date_str}")
+    
+    wunderground_raw_data = wunderground_download.fetch_wunderground(station=station, end_date_str=f"{prediction_date:%Y-%m-%d}", download_window=download_window)
+    wunderground_data = pd.DataFrame(wunderground_raw_data)
+    wunderground_data["date"] = wunderground_data["valid_time_gmt"].apply(lambda d: datetime.datetime.fromtimestamp(d))
+    wunderground_data = wunderground_data.set_index("date")
+    # ARGHHH, the column is named "GMT" but it's actually the local time zone!!
+    wunderground_data.index = wunderground_data.index.tz_localize("EST")
+    
+    return wunderground_data
+
+def populate_wunderground_data_wrapper(args):
+  return populate_wunderground_data(*args)
 
 def prepare_wunderground_eval_data(station, start_date, eval_len, wunderground_lookback):
     cache_dir = "eval"
@@ -36,16 +54,13 @@ def prepare_wunderground_eval_data(station, start_date, eval_len, wunderground_l
         num_future_requests = eval_len // download_window
         num_past_requests = -(wunderground_lookback // download_window)
 
-        full_wunderground = []
-        for i in range(num_past_requests, num_future_requests + 3): # need to *include* one before, the current, and one after for padding
-            prediction_date = start_date + i * window_days
-            wunderground_raw_data = wunderground_download.fetch_wunderground(station=station, end_date_str=f"{prediction_date:%Y-%m-%d}", download_window=download_window)
-            wunderground_data = pd.DataFrame(wunderground_raw_data)
-            wunderground_data["date"] = wunderground_data["valid_time_gmt"].apply(lambda d: datetime.datetime.fromtimestamp(d))
-            wunderground_data = wunderground_data.set_index("date")
-            # ARGHHH, the column is named "GMT" but it's actually the local time zone!!
-            wunderground_data.index = wunderground_data.index.tz_localize("EST")
-            full_wunderground.append(wunderground_data) 
+        p = Pool(multiprocessing.cpu_count())
+        populate_data_args = [(i, start_date, window_days, station, download_window) for i in range(num_past_requests, num_future_requests + 3)]
+        full_wunderground = p.map(populate_wunderground_data_wrapper, populate_data_args)
+        p.close()
+        p.join()
+        
+        full_wunderground = list(full_wunderground)
         full_wunderground = pd.concat(full_wunderground)
         full_wunderground.to_csv(cache_fn)
     end = time.time()

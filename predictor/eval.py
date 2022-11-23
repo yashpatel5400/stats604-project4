@@ -26,7 +26,7 @@ from predictor.models.seamus import BasicOLSPredictor
 from predictor.models.seamus import RidgePredictor
 from predictor.models.vinod import PrevDayHistoricalPredictor
 from predictor.models.vinod import MixPrevDayHistoricalPredictor
-from predictor.models.yash import PrevDayPredictor
+from predictor.models.yash import LRPredictor
 
 def populate_wunderground_data(i, start_date, window_days, station, download_window):
     prediction_date = start_date + i * window_days

@@ -29,10 +29,7 @@ class HistoricAveragePredictor(Predictor):
             for i in range(1, 6):
                 date_ = (current_date + pd.DateOffset(days=i))
                 stations_data.append(df[df.index == (date_.month, date_.day)].values.flatten())
-           
-       
              
-           
         stations_data = np.array(stations_data).flatten()
         return stations_data
 

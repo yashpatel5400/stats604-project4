@@ -2,6 +2,9 @@ import numpy as np
 import utils
 import datetime
 import pandas as pd
+from datetime import date, timedelta
+from sklearn.linear_model import LinearRegression
+pd.options.mode.chained_assignment = None
 
 from predictor.models.predictor_scaffold import Predictor
 from predictor.models.unique import HistoricAveragePredictor
@@ -49,6 +52,66 @@ class PrevDayHistoricalPredictor(Predictor):
 
             counter += 1
             counter %= 5
+
+        predictions = (prev_day_pred + historical_day_pred).round(1)
+        return predictions
+
+
+class MixPrevDayHistoricalPredictor(Predictor):
+    def __init__(self):
+        self.prev_day_model = PrevDayPredictor()
+        self.historical_day_model = HistoricAveragePredictor()
+
+    def create_dataset(self, data, station, day, measure):
+        wunderground = data[station]["wunderground"]
+        wunderground['date_col'] = pd.to_datetime(wunderground.index).date
+
+        noaa = data[station]["noaa"]
+        noaa = noaa.loc[:, [ "TMIN", "TAVG", "TMAX"]].dropna(axis =0)
+        noaa = noaa*0.18+32.0
+
+        current_date = wunderground['date_col'].iloc[0] #start at beginning
+
+        date_range = pd.date_range(current_date , current_date + pd.DateOffset(days=365) - timedelta(days = 1),  freq='d')
+        month_day_index= [(date.month, date.day) for date in date_range]
+
+        df = noaa.groupby(by=[noaa.index.month, noaa.index.day]).mean().round(2)
+        historical_tmp = df.loc[month_day_index[day:]][measure]
+
+        if measure == "TMIN":
+            current_temp = wunderground.groupby(['date_col'], sort=False)['temp'].min()
+        elif measure == "TMAX":
+            current_temp = wunderground.groupby(['date_col'], sort=False)['temp'].max()
+        else:
+            current_temp = wunderground.groupby(['date_col'], sort=False)['temp'].mean()
+
+        current_temp_trunc = current_temp.loc[date_range[:-day]]
+
+        X =pd.DataFrame(columns=['current_min', 'historical_avg_min'])
+        X['current_min'] = current_temp_trunc
+        X['historical_avg_min'] = historical_tmp.values
+        y = current_temp.loc[date_range[day:]]
+
+        return X, y
+
+    def predict(self, data):
+        measurements = ["TMIN", "TAVG", "TMAX"]
+
+        prev_day_pred = self.prev_day_model.predict(data) #vector of length 300
+        historical_day_pred = self.historical_day_model.predict(data) #vector of length 300
+
+        station_coef_tuples = []
+
+        for station in utils.stations: #20 stations
+            for day in range(1, 6): #5 days
+                for meas in measurements: # 3 measurements
+                    X, y = self.create_dataset(data, station, day, meas)
+                    reg = LinearRegression(fit_intercept = False).fit(X, y)
+                    station_coef_tuples.append(tuple(reg.coef_))
+
+        for index in range(len(prev_day_pred)):
+            prev_day_pred[index] = prev_day_pred[index] * station_coef_tuples[index][0]
+            historical_day_pred[index] = historical_day_pred[index] * station_coef_tuples[index][1]
 
         predictions = (prev_day_pred + historical_day_pred).round(1)
         return predictions

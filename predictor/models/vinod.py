@@ -27,7 +27,7 @@ class PrevDayPredictor(Predictor):
     #     stations_data = np.array(stations_data).flatten()
     #     return stations_data
     def predict(self, data):
-        stations_data = [list(data[station]["wunderground"].iloc[-2][["temp_min","temp_mean","temp_max"]].values) * 5 for station in utils.stations]
+        stations_data = [list(data[station]["wunderground"].iloc[-1][["temp_min","temp_mean","temp_max"]].values) * 5 for station in utils.stations]
         stations_data = np.array(stations_data).flatten()
         return stations_data
 
@@ -74,13 +74,14 @@ class MixPrevDayHistoricalPredictor(Predictor):
         noaa = noaa.loc[:, [ "TMIN", "TAVG", "TMAX"]].dropna(axis =0)
         noaa = noaa*0.18+32.0
 
-        current_date = wunderground['date_col'].iloc[0]
+        current_date = wunderground['date_col'].iloc[-1]
+        print(current_date)
 
-        date_range = pd.date_range(current_date , current_date + pd.DateOffset(days=365) - timedelta(days = 1),  freq='d')
+        date_range = pd.date_range(current_date - pd.DateOffset(days=365) , current_date - timedelta(days = 1),  freq='d')
         month_day_index= [(date.month, date.day) for date in date_range]
 
         df = noaa.groupby(by=[noaa.index.month, noaa.index.day]).mean().round(2)
-        historical_tmp = df.loc[month_day_index[1 + day:]][measure]
+        historical_tmp = df.loc[month_day_index[day:]][measure]
 
         if measure == "TMIN":
             current_temp = wunderground["temp_min"]
@@ -89,14 +90,12 @@ class MixPrevDayHistoricalPredictor(Predictor):
         else:
             current_temp = wunderground["temp_mean"]
 
-        current_temp_trunc = current_temp.loc[date_range[:-(day + 1)]] #stop 1 days before end
+        current_temp_trunc = current_temp.loc[date_range[:-(day)]] #stop 1 days before end
 
         X =pd.DataFrame(columns=['current_min', 'historical_avg_min'])
         X['current_min'] = current_temp_trunc
         X['historical_avg_min'] = historical_tmp.values
-        y = current_temp.loc[date_range[1+day:]]
-
-        print(X)
+        y = current_temp.loc[date_range[day:]]
 
         return X, y
 

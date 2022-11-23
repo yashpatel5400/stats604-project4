@@ -21,6 +21,7 @@ from predictor.models.unique import ArimaPredictor
 from predictor.models.unique import HistoricAveragePredictor
 from predictor.models.seamus import BasicOLSPredictor
 from predictor.models.vinod import PrevDayHistoricalPredictor
+from predictor.models.vinod import MixPrevDayHistoricalPredictor
 
 def populate_wunderground_data(i, start_date, window_days, station, download_window):
     prediction_date = start_date + i * window_days
@@ -165,6 +166,6 @@ def eval(model):
     return mses_per_year
 
 if __name__ == "__main__":
-    model = PrevDayHistoricalPredictor()
+    model = MixPrevDayHistoricalPredictor()
     eval_mses = eval(model)
     print(eval_mses)

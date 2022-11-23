@@ -13,17 +13,21 @@ class PrevDayPredictor(Predictor):
     def __init__(self):
         pass
 
+    # def predict(self, data):
+
+    #     stations_data = []
+    #     for station in utils.stations:
+    #         df = data[station]["wunderground"]
+    #         df['date_col'] = pd.to_datetime(df.index).date
+    #         temp_max = df.groupby(['date_col'], sort=False)['temp'].max()
+    #         temp_min = df.groupby(['date_col'], sort=False)['temp'].min()
+    #         temp_mean = df.groupby(['date_col'], sort=False)['temp'].mean()
+    #         stations_data.append([temp_min[-1], round(temp_mean[-1],2), temp_max[-1]]*5)
+
+    #     stations_data = np.array(stations_data).flatten()
+    #     return stations_data
     def predict(self, data):
-
-        stations_data = []
-        for station in utils.stations:
-            df = data[station]["wunderground"]
-            df['date_col'] = pd.to_datetime(df.index).date
-            temp_max = df.groupby(['date_col'], sort=False)['temp'].max()
-            temp_min = df.groupby(['date_col'], sort=False)['temp'].min()
-            temp_mean = df.groupby(['date_col'], sort=False)['temp'].mean()
-            stations_data.append([temp_min[-1], round(temp_mean[-1],2), temp_max[-1]]*5)
-
+        stations_data = [list(data[station]["wunderground"].iloc[-2][["temp_min","temp_mean","temp_max"]].values) * 5 for station in utils.stations]
         stations_data = np.array(stations_data).flatten()
         return stations_data
 
@@ -70,27 +74,29 @@ class MixPrevDayHistoricalPredictor(Predictor):
         noaa = noaa.loc[:, [ "TMIN", "TAVG", "TMAX"]].dropna(axis =0)
         noaa = noaa*0.18+32.0
 
-        current_date = wunderground['date_col'].iloc[0] #start at beginning
+        current_date = wunderground['date_col'].iloc[0]
 
         date_range = pd.date_range(current_date , current_date + pd.DateOffset(days=365) - timedelta(days = 1),  freq='d')
         month_day_index= [(date.month, date.day) for date in date_range]
 
         df = noaa.groupby(by=[noaa.index.month, noaa.index.day]).mean().round(2)
-        historical_tmp = df.loc[month_day_index[day:]][measure]
+        historical_tmp = df.loc[month_day_index[1 + day:]][measure]
 
         if measure == "TMIN":
-            current_temp = wunderground.groupby(['date_col'], sort=False)['temp'].min()
+            current_temp = wunderground["temp_min"]
         elif measure == "TMAX":
-            current_temp = wunderground.groupby(['date_col'], sort=False)['temp'].max()
+            current_temp = wunderground["temp_max"]
         else:
-            current_temp = wunderground.groupby(['date_col'], sort=False)['temp'].mean()
+            current_temp = wunderground["temp_mean"]
 
-        current_temp_trunc = current_temp.loc[date_range[:-day]]
+        current_temp_trunc = current_temp.loc[date_range[:-(day + 1)]] #stop 1 days before end
 
         X =pd.DataFrame(columns=['current_min', 'historical_avg_min'])
         X['current_min'] = current_temp_trunc
         X['historical_avg_min'] = historical_tmp.values
-        y = current_temp.loc[date_range[day:]]
+        y = current_temp.loc[date_range[1+day:]]
+
+        print(X)
 
         return X, y
 

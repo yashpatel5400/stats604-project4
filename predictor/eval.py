@@ -191,6 +191,6 @@ def eval(model):
     return mses_per_year
 
 if __name__ == "__main__":
-    model = PrevDayPredictor()
+    model = MixPrevDayHistoricalPredictor()
     eval_mses = eval(model)
     print(eval_mses)

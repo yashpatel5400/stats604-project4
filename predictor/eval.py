@@ -1,6 +1,9 @@
 import sys
 sys.path.append("../")
 
+import warnings
+warnings.simplefilter(action='ignore', category=FutureWarning) # ignore FutureWarnings from pd
+
 import os
 import datetime
 import pickle
@@ -16,13 +19,14 @@ from multiprocessing.pool import Pool
 from raw_data import wunderground_download
 import predictor.utils as utils
 from predictor.models.predictor_zeros import ZerosPredictor
-from predictor.models.vinod import PrevDayPredictor
+# from predictor.models.vinod import PrevDayPredictor
 from predictor.models.unique import ArimaPredictor
 from predictor.models.unique import HistoricAveragePredictor
 from predictor.models.seamus import BasicOLSPredictor
 from predictor.models.seamus import RidgePredictor
 from predictor.models.vinod import PrevDayHistoricalPredictor
 from predictor.models.vinod import MixPrevDayHistoricalPredictor
+from predictor.models.yash import PrevDayPredictor
 
 def populate_wunderground_data(i, start_date, window_days, station, download_window):
     prediction_date = start_date + i * window_days
@@ -85,23 +89,43 @@ def get_station_eval_task(full_eval_data, prediction_date, station):
     est = pytz.timezone('US/Eastern')
     strict_cutoff = est.localize(prediction_date.replace(hour=12)) # all the predictions are going to be made noon EST
 
+    local_timezone = pytz.timezone(utils.fetch_timezone(station))
+    full_wunderground['date_col'] = pd.to_datetime(full_wunderground.index).tz_convert(local_timezone).date
+    
+    # cutoff_side = 0: < "prediction cutoff" -- used to construct our dataset
+    # cutoff_side = 1: > "prediction cutoff" -- used to construct the evaluation target
+    for cutoff_side in range(2):
+        if cutoff_side == 0:
+            dataset_view = full_wunderground[full_wunderground.index < strict_cutoff]
+        else:
+            dataset_view = full_wunderground[full_wunderground.index >= strict_cutoff]
+
+        # Wunderground returns granular (hourly) data points, but we only want daily for prediction: this coarsens the dataset
+        aggregated_columns = ["temp", "wspd", "pressure", "heat_index", 'dewPt']
+        maxes = dataset_view.groupby(['date_col'], sort=True)[aggregated_columns].max().set_axis([f"{column}_max" for column in aggregated_columns], axis=1, inplace=False).set_index(dataset_view['date_col'].unique())
+        means = dataset_view.groupby(['date_col'], sort=True)[aggregated_columns].mean().set_axis([f"{column}_mean" for column in aggregated_columns], axis=1, inplace=False).set_index(dataset_view['date_col'].unique())
+        mins  = dataset_view.groupby(['date_col'], sort=True)[aggregated_columns].min().set_axis([f"{column}_min" for column in aggregated_columns], axis=1, inplace=False).set_index(dataset_view['date_col'].unique())
+        aggregated_wunderground = pd.concat((mins, means, maxes), axis=1)
+
+        if cutoff_side == 0:
+            cut_wunderground = aggregated_wunderground.drop(aggregated_wunderground.index[0], axis=0) # first row is often partial day based on the time zone
+        else:
+            evaluation_data = aggregated_wunderground
+
     noaa_cutoff_len = 3
     noaa_cutoff = prediction_date - datetime.timedelta(days=noaa_cutoff_len)
     cut_noaa = full_noaa.iloc[full_noaa.index < noaa_cutoff]
-
-    cut_wunderground = full_wunderground.iloc[full_wunderground.index < strict_cutoff]
-
-    local_timezone = pytz.timezone(utils.fetch_timezone(station))
-    forecast_horizon = 5
-    target = []
-    for forecast_day in range(1, forecast_horizon + 1):
-        forecast_date_start = local_timezone.localize(prediction_date + datetime.timedelta(days=forecast_day))
-        forecast_date_end = local_timezone.localize(prediction_date + datetime.timedelta(days=forecast_day) + datetime.timedelta(days=1))
-        wunderground_forecast = full_wunderground.iloc[np.logical_and(forecast_date_start <= full_wunderground.index, full_wunderground.index < forecast_date_end)]
-        temps = wunderground_forecast["temp"]
-        target += [temps.min(), temps.mean(), temps.max()]
     
+    forecast_horizon = 5
+    prediction_window = [prediction_date + datetime.timedelta(days=forecast_day) for forecast_day in range(1, forecast_horizon + 1)]
+    prediction_targets_df = evaluation_data.loc[prediction_window]
+    target = []
+    for i in range(len(prediction_targets_df)):
+        target.append(prediction_targets_df["temp_min"][i])
+        target.append(prediction_targets_df["temp_mean"][i])
+        target.append(prediction_targets_df["temp_max"][i])
     target = np.array(target)
+
     data = {
         "noaa": cut_noaa,
         "wunderground": cut_wunderground,
@@ -167,6 +191,6 @@ def eval(model):
     return mses_per_year
 
 if __name__ == "__main__":
-    model = RidgePredictor()
+    model = PrevDayPredictor()
     eval_mses = eval(model)
     print(eval_mses)

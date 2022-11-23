@@ -20,6 +20,7 @@ from predictor.models.vinod import PrevDayPredictor
 from predictor.models.unique import ArimaPredictor
 from predictor.models.unique import HistoricAveragePredictor
 from predictor.models.seamus import BasicOLSPredictor
+from predictor.models.seamus import RidgePredictor
 from predictor.models.vinod import PrevDayHistoricalPredictor
 from predictor.models.vinod import MixPrevDayHistoricalPredictor
 
@@ -166,6 +167,6 @@ def eval(model):
     return mses_per_year
 
 if __name__ == "__main__":
-    model = BasicOLSPredictor()
+    model = RidgePredictor()
     eval_mses = eval(model)
     print(eval_mses)

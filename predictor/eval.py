@@ -102,10 +102,12 @@ def get_station_eval_task(full_eval_data, prediction_date, station):
 
         # Wunderground returns granular (hourly) data points, but we only want daily for prediction: this coarsens the dataset
         aggregated_columns = ["temp", "wspd", "pressure", "heat_index", 'dewPt']
-        maxes = dataset_view.groupby(['date_col'], sort=True)[aggregated_columns].max().set_axis([f"{column}_max" for column in aggregated_columns], axis=1, inplace=False).set_index(dataset_view['date_col'].unique())
-        means = dataset_view.groupby(['date_col'], sort=True)[aggregated_columns].mean().set_axis([f"{column}_mean" for column in aggregated_columns], axis=1, inplace=False).set_index(dataset_view['date_col'].unique())
-        mins  = dataset_view.groupby(['date_col'], sort=True)[aggregated_columns].min().set_axis([f"{column}_min" for column in aggregated_columns], axis=1, inplace=False).set_index(dataset_view['date_col'].unique())
-        aggregated_wunderground = pd.concat((mins, means, maxes), axis=1)
+        maxes = dataset_view.groupby(['date_col'], sort=False)[aggregated_columns].max().set_axis([f"{column}_max" for column in aggregated_columns], axis=1, inplace=False).set_index(dataset_view['date_col'].unique())
+        means = dataset_view.groupby(['date_col'], sort=False)[aggregated_columns].mean().set_axis([f"{column}_mean" for column in aggregated_columns], axis=1, inplace=False).set_index(dataset_view['date_col'].unique())
+        mins  = dataset_view.groupby(['date_col'], sort=False)[aggregated_columns].min().set_axis([f"{column}_min" for column in aggregated_columns], axis=1, inplace=False).set_index(dataset_view['date_col'].unique())
+        wind_dir = dataset_view.groupby(['date_col'], sort=False)['wdir_cardinal'].agg(
+            lambda x: pd.Series.mode(x)[0]).astype("category").to_frame("wdir_mode").set_index(dataset_view['date_col'].unique())
+        aggregated_wunderground = pd.concat((mins, means, maxes, wind_dir), axis=1)
 
         if cutoff_side == 0:
             cut_wunderground = aggregated_wunderground.drop(aggregated_wunderground.index[0], axis=0) # first row is often partial day based on the time zone

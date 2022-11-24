@@ -23,7 +23,8 @@ from predictor.models.predictor_zeros import ZerosPredictor
 from predictor.models.unique import ArimaPredictor
 from predictor.models.unique import HistoricAveragePredictor
 from predictor.models.seamus import BasicOLSPredictor
-from predictor.models.seamus import RidgePredictor
+from predictor.models.seamus import LassoPredictor
+from predictor.models.seamus import GBTPredictor
 from predictor.models.vinod import PrevDayHistoricalPredictor
 from predictor.models.vinod import MixPrevDayHistoricalPredictor
 from predictor.models.yash import LRPredictor

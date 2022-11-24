@@ -115,7 +115,6 @@ class MixPrevDayHistoricalPredictor(Predictor):
 
         predictions = []
         for index in range(len(prev_day_pred)):
-            #add intercept to just one of them
             reg_model = station_reg[index]
 
             X_test =pd.DataFrame(columns=['current', 'historical'])

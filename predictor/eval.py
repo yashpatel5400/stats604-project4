@@ -180,7 +180,7 @@ def eval(model):
     }
     """
     
-    start_year = 2015
+    start_year = 2019
     num_years = 1
     mses_per_year = {}
     wunderground_lookback = 365 # how many days back to return of wunderground data

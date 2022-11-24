@@ -92,9 +92,9 @@ class MixPrevDayHistoricalPredictor(Predictor):
 
         current_temp_trunc = current_temp.loc[date_range[:-(day)]] #stop 1 days before end
 
-        X =pd.DataFrame(columns=['current_min', 'historical_avg_min'])
-        X['current_min'] = current_temp_trunc
-        X['historical_avg_min'] = historical_tmp.values
+        X =pd.DataFrame(columns=['current', 'historical'])
+        X['current'] = current_temp_trunc
+        X['historical'] = historical_tmp.values
         y = current_temp.loc[date_range[day:]]
 
         return X, y
@@ -105,18 +105,23 @@ class MixPrevDayHistoricalPredictor(Predictor):
         prev_day_pred = self.prev_day_model.predict(data) #vector of length 300
         historical_day_pred = self.historical_day_model.predict(data) #vector of length 300
 
-        station_coef_tuples = []
-
+        station_reg = []
         for station in utils.stations: #20 stations
             for day in range(1, 6): #5 days
                 for meas in measurements: # 3 measurements
                     X, y = self.create_dataset(data, station, day, meas)
-                    reg = LinearRegression(fit_intercept = False).fit(X, y)
-                    station_coef_tuples.append(tuple(reg.coef_))
+                    reg = LinearRegression(fit_intercept = True).fit(X, y)
+                    station_reg.append(reg)
 
+        predictions = []
         for index in range(len(prev_day_pred)):
-            prev_day_pred[index] = prev_day_pred[index] * station_coef_tuples[index][0]
-            historical_day_pred[index] = historical_day_pred[index] * station_coef_tuples[index][1]
+            #add intercept to just one of them
+            reg_model = station_reg[index]
 
-        predictions = (prev_day_pred + historical_day_pred).round(1)
+            X_test =pd.DataFrame(columns=['current', 'historical'])
+            X_test['current'] = [prev_day_pred[index]]
+            X_test['historical'] = [historical_day_pred[index]]
+            pred = reg_model.predict(X_test)
+            predictions.append(pred[0])
+            
         return predictions

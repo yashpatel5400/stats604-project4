@@ -1,9 +1,12 @@
 import numpy as np
 import utils
-import datetime
+import time
 import pandas as pd
 from datetime import date, timedelta
-from sklearn.linear_model import LinearRegression
+
+from sklearn.multioutput import MultiOutputRegressor
+from sklearn.ensemble import GradientBoostingRegressor
+from sklearn.linear_model import LinearRegression, HuberRegressor
 pd.options.mode.chained_assignment = None
 
 from predictor.models.predictor_scaffold import Predictor
@@ -34,9 +37,15 @@ class LRPredictor(Predictor):
 
     def predict(self, data):
         stations_data = []
+        start = time.time()
         for station in utils.stations:
             window_size = 3
             X, y, test_X = create_regression_data(data[station]["wunderground"], window_size)
-            lr = LinearRegression().fit(X, y)
-            stations_data.append(lr.predict(test_X))
+            # for i in range(y.shape[1]):
+            #     lr = HuberRegressor().fit(X, y[:,i])
+            #     stations_data.append(lr.predict(test_X))
+            reg = MultiOutputRegressor(GradientBoostingRegressor(n_estimators=20,)).fit(X, y)
+            stations_data.append(reg.predict(test_X))
+        end = time.time()
+        print(f"Performed prediction in: {end - start} s")
         return np.array(stations_data).flatten()

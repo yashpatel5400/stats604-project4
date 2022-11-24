@@ -165,6 +165,7 @@ def eval_single_window(start_eval_date, eval_len, wunderground_lookback, model):
         
         predictions = model.predict(eval_data)
         mse = (np.square(eval_target - predictions)).mean()
+        print(mse)
         mses.append(mse)
     return mses
 

@@ -5,9 +5,13 @@ import pandas as pd
 import time
 from datetime import date, timedelta
 from sklearn.linear_model import LinearRegression
+from sklearn.linear_model import RidgeCV
 from sklearn.multioutput import MultiOutputRegressor
 from sklearn.ensemble import GradientBoostingRegressor
 from sklearn.linear_model import LinearRegression, HuberRegressor
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.neural_network import MLPRegressor
+from sklearn.linear_model import Lasso
 pd.options.mode.chained_assignment = None
 
 from predictor.models.predictor_scaffold import Predictor
@@ -135,12 +139,9 @@ class LRPredictor(Predictor):
         stations_data = []
         start = time.time()
         for station in utils.stations:
-            window_size = 3
-            X, y, test_X = create_regression_data(data[station]["wunderground"], window_size)
-            # for i in range(y.shape[1]):
-            #     lr = HuberRegressor().fit(X, y[:,i])
-            #     stations_data.append(lr.predict(test_X))
-            reg = MultiOutputRegressor(GradientBoostingRegressor(n_estimators=20,)).fit(X, y)
+            window_size = 10
+            X, y, test_X = create_regression_data(data[station]["wunderground"], window_size) 
+            reg = RandomForestRegressor(max_depth=5).fit(X, y)
             stations_data.append(reg.predict(test_X))
         end = time.time()
         print(f"Performed prediction in: {end - start} s")

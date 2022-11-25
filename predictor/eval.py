@@ -26,8 +26,8 @@ from predictor.models.seamus import BasicOLSPredictor
 from predictor.models.seamus import LassoPredictor
 from predictor.models.seamus import GBTPredictor
 from predictor.models.vinod import PrevDayHistoricalPredictor
-from predictor.models.vinod import MixPrevDayHistoricalPredictor
-from predictor.models.yash import LRPredictor
+from predictor.models.vinod import LRPredictor
+# from predictor.models.yash import LRPredictor
 
 def populate_wunderground_data(i, start_date, window_days, station, download_window):
     prediction_date = start_date + i * window_days
@@ -185,7 +185,7 @@ def eval(model):
     start_year = 2019
     num_years = 1
     mses_per_year = {}
-    wunderground_lookback = 365 # how many days back to return of wunderground data
+    wunderground_lookback = 2*365 # how many days back to return of wunderground data
     eval_len = 10 # how many days we running evaluation for
     
     for year in range(start_year, start_year + num_years):

@@ -4,28 +4,28 @@ import datetime
 import pandas as pd
 from datetime import date, timedelta
 from sklearn.linear_model import LinearRegression
+from sklearn.multioutput import MultiOutputRegressor
+from sklearn.ensemble import GradientBoostingRegressor
+from sklearn.linear_model import LinearRegression, HuberRegressor
 pd.options.mode.chained_assignment = None
 
 from predictor.models.predictor_scaffold import Predictor
 from predictor.models.unique import HistoricAveragePredictor
 
+def create_regression_data(data, window_size):
+    X, y = [], []
+    target_data = data[["temp_min","temp_mean","temp_max"]].values
+    prediction_window = 5
+    for i in range(len(data) - (window_size + prediction_window + 1)):
+        X.append(data.values[i:i+window_size,:-1].flatten())
+        y.append(target_data[i+window_size+1:i+window_size+1+prediction_window].flatten())
+    test_X = data.values[-window_size-1:-1,:-1].flatten().reshape(1, -1) # the final frame used for future prediction
+    return np.array(X), np.array(y), test_X
+
+
 class PrevDayPredictor(Predictor):
     def __init__(self):
         pass
-
-    # def predict(self, data):
-
-    #     stations_data = []
-    #     for station in utils.stations:
-    #         df = data[station]["wunderground"]
-    #         df['date_col'] = pd.to_datetime(df.index).date
-    #         temp_max = df.groupby(['date_col'], sort=False)['temp'].max()
-    #         temp_min = df.groupby(['date_col'], sort=False)['temp'].min()
-    #         temp_mean = df.groupby(['date_col'], sort=False)['temp'].mean()
-    #         stations_data.append([temp_min[-1], round(temp_mean[-1],2), temp_max[-1]]*5)
-
-    #     stations_data = np.array(stations_data).flatten()
-    #     return stations_data
     def predict(self, data):
         stations_data = [list(data[station]["wunderground"].iloc[-1][["temp_min","temp_mean","temp_max"]].values) * 5 for station in utils.stations]
         stations_data = np.array(stations_data).flatten()
@@ -124,3 +124,23 @@ class MixPrevDayHistoricalPredictor(Predictor):
             predictions.append(pred[0])
             
         return predictions
+
+
+class LRPredictor(Predictor):
+    def __init__(self):
+        pass
+
+    def predict(self, data):
+        stations_data = []
+        start = time.time()
+        for station in utils.stations:
+            window_size = 3
+            X, y, test_X = create_regression_data(data[station]["wunderground"], window_size)
+            # for i in range(y.shape[1]):
+            #     lr = HuberRegressor().fit(X, y[:,i])
+            #     stations_data.append(lr.predict(test_X))
+            reg = MultiOutputRegressor(GradientBoostingRegressor(n_estimators=20,)).fit(X, y)
+            stations_data.append(reg.predict(test_X))
+        end = time.time()
+        print(f"Performed prediction in: {end - start} s")
+        return np.array(stations_data).flatten()

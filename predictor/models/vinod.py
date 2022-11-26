@@ -42,12 +42,13 @@ class PrevDayPredictor(Predictor):
         return stations_data
 
 class PrevDayHistoricalPredictor(Predictor):
-    def __init__(self):
+    def __init__(self, weights):
         self.prev_day_model = PrevDayPredictor()
         self.historical_day_model = HistoricAveragePredictor()
+        self.weights = weights
 
     def predict(self, data):
-        weights = np.array([1, 0.90, 0.80, 0.70, 0.60])
+        weights = self.weights
 
         prev_day_pred = self.prev_day_model.predict(data)
         historical_day_pred = self.historical_day_model.predict(data)
@@ -134,23 +135,6 @@ class MixPrevDayHistoricalPredictor(Predictor):
             predictions.append(pred[0])
             
         return predictions
-
-
-class LRPredictor(Predictor):
-    def __init__(self):
-        pass
-
-    def predict(self, data):
-        stations_data = []
-        start = time.time()
-        for station in utils.stations:
-            window_size = 3
-            X, y, test_X = create_regression_data(data[station]["wunderground"], window_size) 
-            reg = MLPRegressor(random_state=1, hidden_layer_sizes=(16, 8), max_iter=2000, solver='lbfgs', learning_rate= 'adaptive').fit(X, y)
-            stations_data.append(reg.predict(test_X))
-        end = time.time()
-        print(f"Performed prediction in: {end - start} s")
-        return np.array(stations_data).flatten()
 
 class MetaPredictor(Predictor):
     def __init__(self, reg, window_size):

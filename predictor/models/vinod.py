@@ -11,6 +11,11 @@ from sklearn.ensemble import GradientBoostingRegressor
 from sklearn.linear_model import LinearRegression, HuberRegressor
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.neural_network import MLPRegressor
+from sklearn.ensemble import AdaBoostRegressor
+from sklearn.ensemble import BaggingRegressor
+from sklearn.neighbors import KNeighborsRegressor
+from sklearn.preprocessing import PolynomialFeatures
+from sklearn.preprocessing import SplineTransformer
 from sklearn.linear_model import Lasso
 pd.options.mode.chained_assignment = None
 
@@ -139,10 +144,27 @@ class LRPredictor(Predictor):
         stations_data = []
         start = time.time()
         for station in utils.stations:
-            window_size = 10
+            window_size = 3
             X, y, test_X = create_regression_data(data[station]["wunderground"], window_size) 
-            reg = RandomForestRegressor(max_depth=5).fit(X, y)
+            reg = MLPRegressor(random_state=1, hidden_layer_sizes=(16, 8), max_iter=2000, solver='lbfgs', learning_rate= 'adaptive').fit(X, y)
             stations_data.append(reg.predict(test_X))
+        end = time.time()
+        print(f"Performed prediction in: {end - start} s")
+        return np.array(stations_data).flatten()
+
+class MetaPredictor(Predictor):
+    def __init__(self, reg, window_size):
+        self.reg = reg
+        self.window_size = window_size
+
+    def predict(self, data):
+        stations_data = []
+        start = time.time()
+        for station in utils.stations:
+            window_size = self.window_size
+            X, y, test_X = create_regression_data(data[station]["wunderground"], window_size) 
+            self.reg.fit(X, y)
+            stations_data.append(self.reg.predict(test_X))
         end = time.time()
         print(f"Performed prediction in: {end - start} s")
         return np.array(stations_data).flatten()

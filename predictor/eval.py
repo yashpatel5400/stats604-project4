@@ -27,7 +27,9 @@ from predictor.models.seamus import LassoPredictor
 from predictor.models.seamus import GBTPredictor
 from predictor.models.vinod import PrevDayHistoricalPredictor
 from predictor.models.vinod import LRPredictor
-# from predictor.models.yash import LRPredictor
+from predictor.models.vinod import MetaPredictor
+from sklearn.multioutput import MultiOutputRegressor
+from sklearn.ensemble import GradientBoostingRegressor
 
 def populate_wunderground_data(i, start_date, window_days, station, download_window):
     prediction_date = start_date + i * window_days
@@ -185,7 +187,7 @@ def eval(model):
     start_year = 2019
     num_years = 1
     mses_per_year = {}
-    wunderground_lookback = 2*365 # how many days back to return of wunderground data
+    wunderground_lookback = 1*365 # how many days back to return of wunderground data
     eval_len = 10 # how many days we running evaluation for
     
     for year in range(start_year, start_year + num_years):
@@ -195,6 +197,8 @@ def eval(model):
     return mses_per_year
 
 if __name__ == "__main__":
-    model = LRPredictor()
+    reg = MultiOutputRegressor(GradientBoostingRegressor(n_estimators=20,))
+    window_size = 3
+    model = MetaPredictor(reg, window_size)
     eval_mses = eval(model)
     print(eval_mses)

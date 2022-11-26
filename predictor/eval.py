@@ -26,7 +26,6 @@ from predictor.models.seamus import BasicOLSPredictor
 from predictor.models.seamus import LassoPredictor
 from predictor.models.seamus import GBTPredictor
 from predictor.models.vinod import PrevDayHistoricalPredictor
-from predictor.models.vinod import LRPredictor
 from predictor.models.vinod import MetaPredictor
 from sklearn.multioutput import MultiOutputRegressor
 from sklearn.ensemble import GradientBoostingRegressor
@@ -197,8 +196,12 @@ def eval(model):
     return mses_per_year
 
 if __name__ == "__main__":
+    keep_features = ['temp_min', 'wspd_min', 'pressure_min', 'heat_index_min', 'dewPt_min',
+       'temp_mean', 'wspd_mean', 'pressure_mean', 'heat_index_mean',
+       'dewPt_mean', 'temp_max', 'wspd_max', 'pressure_max', 'heat_index_max',
+       'dewPt_max', 'wdir_mode']
     reg = MultiOutputRegressor(GradientBoostingRegressor(n_estimators=20,))
     window_size = 3
-    model = MetaPredictor(reg, window_size)
+    model = MetaPredictor(reg, window_size, keep_features)
     eval_mses = eval(model)
     print(eval_mses)

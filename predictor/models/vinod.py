@@ -22,14 +22,19 @@ pd.options.mode.chained_assignment = None
 from predictor.models.predictor_scaffold import Predictor
 from predictor.models.unique import HistoricAveragePredictor
 
-def create_regression_data(data, window_size):
+def create_regression_data(data, window_size, features):
+    if features is not None:
+        keep_data = data[features]
+    else:
+        keep_data = data
+        
     X, y = [], []
     target_data = data[["temp_min","temp_mean","temp_max"]].values
     prediction_window = 5
     for i in range(len(data) - (window_size + prediction_window + 1)):
-        X.append(data.values[i:i+window_size,:-1].flatten())
+        X.append(keep_data.values[i:i+window_size,:-1].flatten())
         y.append(target_data[i+window_size+1:i+window_size+1+prediction_window].flatten())
-    test_X = data.values[-window_size-1:-1,:-1].flatten().reshape(1, -1) # the final frame used for future prediction
+    test_X = keep_data.values[-window_size-1:-1,:-1].flatten().reshape(1, -1) # the final frame used for future prediction
     return np.array(X), np.array(y), test_X
 
 
@@ -137,16 +142,17 @@ class MixPrevDayHistoricalPredictor(Predictor):
         return predictions
 
 class MetaPredictor(Predictor):
-    def __init__(self, reg, window_size):
+    def __init__(self, reg, window_size, features= None):
         self.reg = reg
         self.window_size = window_size
+        self.features = features
 
     def predict(self, data):
         stations_data = []
         start = time.time()
         for station in utils.stations:
             window_size = self.window_size
-            X, y, test_X = create_regression_data(data[station]["wunderground"], window_size) 
+            X, y, test_X = create_regression_data(data[station]["wunderground"], window_size, self.features) 
             self.reg.fit(X, y)
             stations_data.append(self.reg.predict(test_X))
         end = time.time()

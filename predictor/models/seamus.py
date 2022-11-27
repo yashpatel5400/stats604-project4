@@ -3,13 +3,13 @@ import os
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", ".."))
 
 import numpy as np
-import utils
 import datetime 
 import pandas as pd
 from sklearn.linear_model import Lasso
 from sklearn.linear_model import LinearRegression
 from sklearn.multioutput import MultiOutputRegressor
 from sklearn.ensemble import GradientBoostingRegressor
+import predictor.utils as utils
 from predictor.models.predictor_scaffold import Predictor
 from functools import reduce
 

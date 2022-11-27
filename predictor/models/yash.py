@@ -3,7 +3,6 @@ import os
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", ".."))
 
 import numpy as np
-import utils
 import time
 import pandas as pd
 import logging
@@ -14,6 +13,7 @@ from sklearn.ensemble import GradientBoostingRegressor
 from sklearn.linear_model import LinearRegression, HuberRegressor
 pd.options.mode.chained_assignment = None
 
+import predictor.utils as utils
 from predictor.models.predictor_scaffold import Predictor
 from predictor.models.unique import HistoricAveragePredictor
 

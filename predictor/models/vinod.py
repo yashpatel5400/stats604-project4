@@ -4,7 +4,6 @@ sys.path.append(os.path.join(os.path.dirname(__file__), "..", ".."))
 
 import numpy as np
 import logging
-import utils
 import datetime
 import pandas as pd
 import time
@@ -24,6 +23,7 @@ from sklearn.preprocessing import SplineTransformer
 from sklearn.linear_model import Lasso
 pd.options.mode.chained_assignment = None
 
+import predictor.utils as utils
 from predictor.models.predictor_scaffold import Predictor
 from predictor.models.unique import HistoricAveragePredictor
 

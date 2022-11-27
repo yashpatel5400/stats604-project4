@@ -39,7 +39,7 @@ def prepare_full_eval_data(start_eval_date, eval_len, wunderground_lookback):
         wunderground_lookback: how far (in days) *before the first eval day* to extend the Wunderground data
             Note: data scraping will take time proportional to this number
     """
-    noaa = utils.load_processed_data("noaa")
+    noaa = utils.load_processed_data_src("noaa")
     full_eval_data = {}
     for station in utils.stations:
         full_eval_data[station] = {}
@@ -150,7 +150,7 @@ def eval(model):
     start_year = 2019
     num_years = 1
     mses_per_year = {}
-    wunderground_lookback = 1*365 # how many days back to return of wunderground data
+    wunderground_lookback = 365 # how many days back to return of wunderground data
     eval_len = 10 # how many days we running evaluation for
     
     for year in range(start_year, start_year + num_years):

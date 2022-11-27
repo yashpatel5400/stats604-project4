@@ -9,7 +9,7 @@ from datetime import date
 import numpy as np
 import sys
 from matplotlib import pyplot as plt
-import utils
+import predictor.utils as utils
 import time
 from statsmodels.tsa.arima.model import ARIMA
 from statsmodels.tsa.statespace.sarimax import SARIMAX

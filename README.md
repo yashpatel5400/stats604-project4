@@ -11,6 +11,15 @@ This weather prediction repo is a collection of methods for predicting min, mean
   - __Accurate estimation__ validated through CV over historical data.
   - __Reproducibility__ through an accompanying Dockerfile.
 
+# Code Structure
+Code is organized into the following directories:
+- `data/`: code for processing the raw data (currently support NOAA and Wunderground)
+- `notebooks/`: Jupyter NBs for interactive testing of the pipeline
+- `predictor/`: main source for the repo, which notably includes:
+    - `predictor/eval.py`: evaluation pipeline used for model experimentation and validation
+    - `predictor/models/`: collection of models tested for predictive accuracy
+- `raw_data/`: code for downloading raw data (currently support NOAA and Wunderground)
+
 # Installation
 
 1. To use and install `predictor`, we recommend using Docker. Build the image with: `docker build -f Dockerfile .`
@@ -30,13 +39,16 @@ Note that this will already have been done in the initial Docker image construct
 make predictions
 ```
 
-# Code Structure
-Code is organized into the following directories:
-- `data/`: code for processing the raw data (currently support NOAA and Wunderground)
-- `predictor/`: main source for the repo, which notably includes:
-    - `predictor/eval.py`: evaluation pipeline used for model experimentation and validation
-    - `predictor/models/`: collection of models tested for predictive accuracy
-- `raw_data/`: code for downloading raw data (currently support NOAA and Wunderground)
+# Running NBs
+
+We have also provided Jupyter Notebooks for quick experiments in the `notebooks/` directory. To run this, make
+sure to run the following commands *before* running the notebook:
+
+```
+make clean
+make rawdata
+make
+```
 
 # Authors
 Vinod Raman, Unique Subedi, Seamus Somerstep, and Yash Patel

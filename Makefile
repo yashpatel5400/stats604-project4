@@ -11,5 +11,3 @@ make rawdata:
 
 make data: rawdata
 	cd data && python convert_raw.py
-
-make report:

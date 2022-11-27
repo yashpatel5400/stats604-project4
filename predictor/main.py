@@ -10,21 +10,29 @@ import sys
 import os
 sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 
-import pandas as pd
+import numpy as np
 import datetime
 
 import utils
+from predictor.models.vinod import MetaPredictor
+from sklearn.multioutput import MultiOutputRegressor
+from sklearn.ensemble import GradientBoostingRegressor
 
-def format_output(date_to_prediction):
-    """Takes a dictionary that maps dates to dataframes with the weather stations as 
-    rows and min, avg, max as columns and spits back the formatted string desired as output
-    """
-    start_date = list(date_to_prediction.keys())[0]
-    return f"{start_date}, {', '.join([', '.join(date_to_prediction[date].values.flatten().astype(str)) for date in date_to_prediction])}"
+if __name__ == "__main__":
+    keep_features = ['temp_min', 'wspd_min', 'pressure_min', 'heat_index_min', 'dewPt_min',
+       'temp_mean', 'wspd_mean', 'pressure_mean', 'heat_index_mean',
+       'dewPt_mean', 'temp_max', 'wspd_max', 'pressure_max', 'heat_index_max',
+       'dewPt_max', 'wdir_mode']
+    reg = MultiOutputRegressor(GradientBoostingRegressor(n_estimators=20,))
+    window_size = 3
+    model = MetaPredictor(reg, window_size, keep_features)
+
+    data = utils.load_processed_data()
+    predictions = model.predict(data)
     
-if __name__ == '__main__':
-    start_date = datetime.datetime.strptime("10/10/11", "%m/%d/%y")
-    dates = [start_date + datetime.timedelta(days=1 + delta) for delta in range(5)]
-    predictions = {date: pd.DataFrame(0, columns = ["Min", "Avg", "Max"], index = utils.stations) for date in dates}
-    output = format_output(predictions)
-    print(output)
+    prediction_date = f"{datetime.date.today():%Y-%m-%d}"
+    predictions_rounded = np.around(predictions, 1)
+    
+    fmt_str_contents = [prediction_date] + list([str(prediction) for prediction in predictions_rounded])
+    fmt_str = ", ".join(fmt_str_contents)
+    print(fmt_str)

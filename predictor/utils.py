@@ -34,15 +34,55 @@ stations = [
 station_latlon_cache = {}
 station_timezone_cache = {}
 
-def load_noaa_data(station=None):
-    """Loads data from NOAA and Wunderground with either the station specified or all if station is None.
-    Returns: NOAA_data, Wunderground_data as dictionaries with the station as the key and dataframe as value
+def load_processed_data_src(data_src):
+    """Loads data from NOAA or Wunderground (resp. pass in data_src = "noaa" or "wunderground").
+    Returns: NOAA_data, Wunderground_data as dictionaries with the station as the key and dataframe as value, i.e.
+
+    {
+        "PANC": pd.Dataframe,
+        "PHNL": pd.Dataframe,
+        ...
+    }
     """
-    station_to_noaa_data = {}
+    if data_src not in ["noaa", "wunderground"]:
+        print(f"Invalid data source requested: {data_src} -- must be noaa or wunderground")
+        return None
+
+    station_to_processed_data = {}
     for station in stations:
-        station_to_noaa_data[station] = pd.read_csv(os.path.join(processed_noaa_cache, f"{station}.csv"), index_col=0)
-        station_to_noaa_data[station].index = pd.to_datetime(station_to_noaa_data[station].index)
-    return station_to_noaa_data
+        if data_src == "noaa":
+            data_src_path = os.path.join(processed_noaa_cache, f"{station}.csv")
+        else:
+            data_src_path = os.path.join(processed_wunderground_cache, f"{station}.csv")
+        station_to_processed_data[station] = pd.read_csv(data_src_path, index_col=0)
+        station_to_processed_data[station].index = pd.to_datetime(station_to_processed_data[station].index)
+    return station_to_processed_data
+
+def load_processed_data():
+    """Loads data from both NOAA or Wunderground. Assumes data has been scraped and preprocessed
+    Returns: NOAA_data, Wunderground_data as a single dict with the data src as the inner keys to a dict
+    with the station as the key and dataframe as value, i.e.
+
+    {
+        "PANC": {
+            "noaa": pd.Dataframe,
+            "wunderground": pd.Dataframe,
+        },
+        "PHNL": {
+            "noaa": pd.Dataframe,
+            "wunderground": pd.Dataframe,
+        },
+        ...
+    }
+    """
+    processed_data = {}
+    for data_src in ["noaa", "wunderground"]:
+        station_to_data = load_processed_data_src(data_src)
+        for station in station_to_data:
+            if station not in processed_data:
+                processed_data[station] = {}
+            processed_data[station][data_src] = station_to_data[station]
+    return processed_data
 
 def fetch_latlon(station):
     global station_latlon_cache

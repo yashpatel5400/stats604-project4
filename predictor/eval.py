@@ -38,7 +38,7 @@ def prepare_full_eval_data(start_eval_date, eval_len, wunderground_lookback):
         wunderground_lookback: how far (in days) *before the first eval day* to extend the Wunderground data
             Note: data scraping will take time proportional to this number
     """
-    noaa = utils.load_noaa_data()
+    noaa = utils.load_processed_data("noaa")
     full_eval_data = {}
     for station in utils.stations:
         full_eval_data[station] = {}

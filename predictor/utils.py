@@ -3,6 +3,12 @@ import pandas as pd
 import requests
 import json
 
+# globally referenced paths
+raw_wunderground_cache = "data/raw_wunderground"
+procesed_wunderground_cache = "data/processed_wunderground"
+raw_noaa_cache = "data/raw_noaa"
+processed_noaa_cache = "data/processed_noaa"
+
 stations = [
     "PANC",
     "KBOI",
@@ -34,7 +40,7 @@ def load_noaa_data(station=None):
     """
     station_to_noaa_data = {}
     for station in stations:
-        station_to_noaa_data[station] = pd.read_csv(os.path.join("..", "data", "noaa", f"{station}.csv"), index_col=0)
+        station_to_noaa_data[station] = pd.read_csv(os.path.join(processed_noaa_cache, f"{station}.csv"), index_col=0)
         station_to_noaa_data[station].index = pd.to_datetime(station_to_noaa_data[station].index)
     return station_to_noaa_data
 

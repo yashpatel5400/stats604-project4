@@ -1,5 +1,6 @@
 import sys
-sys.path.append("../")
+import os
+sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 
 import warnings
 warnings.simplefilter(action='ignore', category=FutureWarning) # ignore FutureWarnings from pd
@@ -9,7 +10,6 @@ import pickle
 import pytz
 import pandas as pd
 import numpy as np
-
 
 from raw_data import wunderground_download
 import predictor.utils as utils

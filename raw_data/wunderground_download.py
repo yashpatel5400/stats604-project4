@@ -1,5 +1,6 @@
 import sys
-sys.path.append("../")
+import os
+sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 
 from math import ceil
 import datetime
@@ -12,7 +13,7 @@ import pandas as pd
 import multiprocessing
 from multiprocessing.pool import Pool
 
-from predictor.utils import stations
+import predictor.utils as utils
 
 def fetch_wunderground(station, end_date_str="2022-11-03", download_window=5):
     """Downloads data from Wunderground from end_date-download_window to end_date. Note that
@@ -84,9 +85,13 @@ def fetch_wunderground_pd(station, predict_date, future_days, past_days):
             used for historical data, i.e. for evaluation tasks)
         past_days: (int) how many days in the past to scrape
     """
-    cache_dir = "wunderground_cache"
-    os.makedirs(cache_dir, exist_ok=True)
-    cache_fn = os.path.join(cache_dir, f"{station}-{predict_date:%Y-%m-%d}-{future_days}-{past_days}.csv")
+    os.makedirs(utils.raw_wunderground_cache, exist_ok=True)
+    # a bit messy, but to reuse the caching logic between eval and the "final prediction," we have a special
+    # case for simplifying the name in the "final prediction" case to match the NOAA caching convention
+    if predict_date == datetime.date.today():
+        cache_fn = os.path.join(utils.raw_wunderground_cache, f"{station}.csv")
+    else:
+        cache_fn = os.path.join(utils.raw_wunderground_cache, f"{station}-{predict_date:%Y-%m-%d}-{future_days}-{past_days}.csv")
 
     start = time.time()
     if os.path.exists(cache_fn):
@@ -111,6 +116,6 @@ def fetch_wunderground_pd(station, predict_date, future_days, past_days):
     return full_wunderground
 
 if __name__ == "__main__":
-    for station in stations:
+    for station in utils.stations:
         wunderground_days = 365 # get one year of past data
         fetch_wunderground_pd(station, predict_date=datetime.date.today(), future_days=0, past_days=wunderground_days)

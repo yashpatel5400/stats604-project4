@@ -1,6 +1,12 @@
+import sys
+import os
+sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
+
 import urllib.request
 import json
 import os
+
+import predictor.utils as utils
 
 station_code_to_noaa = {
     "PANC": "USW00026451",
@@ -28,8 +34,8 @@ station_code_to_noaa = {
 if __name__ == "__main__":
     base_url = "https://www.ncei.noaa.gov/pub/data/ghcn/daily/all/"
 
-    os.makedirs("noaa", exist_ok=True)
+    os.makedirs(utils.raw_noaa_cache, exist_ok=True)
     for station_code in station_code_to_noaa:
         url = f"{base_url}/{station_code_to_noaa[station_code]}.dly"
-        urllib.request.urlretrieve(url, os.path.join("noaa", f"{station_code}.dly"))
+        urllib.request.urlretrieve(url, os.path.join(utils.raw_noaa_cache, f"{station_code}.dly"))
         print(f"Scraped data for: {station_code}")

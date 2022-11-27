@@ -6,6 +6,10 @@ __license__ = "MIT"
 __version__ = "1.0"
 __status__ = "Dev"
 
+import sys
+import os
+sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
+
 import pandas as pd
 import datetime
 

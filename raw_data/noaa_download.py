@@ -32,3 +32,4 @@ if __name__ == "__main__":
     for station_code in station_code_to_noaa:
         url = f"{base_url}/{station_code_to_noaa[station_code]}.dly"
         urllib.request.urlretrieve(url, os.path.join("noaa", f"{station_code}.dly"))
+        print(f"Scraped data for: {station_code}")

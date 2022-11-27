@@ -26,7 +26,19 @@ from sklearn.multioutput import MultiOutputRegressor
 from sklearn.ensemble import GradientBoostingRegressor
 
 def prepare_full_eval_data(start_eval_date, eval_len, wunderground_lookback):
-    noaa, _ = utils.load_data()
+    """Prepares data for evaluation for a window of [start_eval_date, start_eval_date + eval_len] 
+    where eval_len is to be specified as the number of days. Note that the data returned from this
+    is NOT the data that is to be used for evaluation, i.e. each eval_day must be separated after
+    this initial bulk fetch (using get_eval_task)
+    
+    args:
+        start_eval_date: (datetime.datetime) day of first *evaluation*, i.e. first day where predictions are *made*
+            Note: that EACH eval day is evaluated for 5 days forward!
+        eval_len: how many eval days to include
+        wunderground_lookback: how far (in days) *before the first eval day* to extend the Wunderground data
+            Note: data scraping will take time proportional to this number
+    """
+    noaa = utils.load_noaa_data()
     full_eval_data = {}
     for station in utils.stations:
         full_eval_data[station] = {}
@@ -107,7 +119,6 @@ def eval_single_window(start_eval_date, eval_len, wunderground_lookback, model):
         eval_len: how many eval days to include
         wunderground_lookback: how far (in days) *before the first eval day* to extend the Wunderground data
             Note: data scraping will take time proportional to this number
-    
     """
     full_eval_data = prepare_full_eval_data(start_eval_date, eval_len, wunderground_lookback)
     

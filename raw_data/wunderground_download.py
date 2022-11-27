@@ -1,6 +1,7 @@
 import sys
 sys.path.append("../")
 
+from math import ceil
 import datetime
 import json
 import requests
@@ -27,7 +28,9 @@ def fetch_wunderground(station, end_date_str="2022-11-03", download_window=5):
         'sec-ch-ua-platform': '"macOS"',
     }
 
-    end_date = datetime.datetime.strptime(end_date_str, "%Y-%m-%d") # can also use datetime.today() for today's date
+    end_date = datetime.datetime.strptime(end_date_str, "%Y-%m-%d").date()
+    end_date = min(end_date, datetime.date.today()) # can't retrieve future days!
+
     start_date = end_date - datetime.timedelta(days=(download_window-1))
     start_date_str = f"{start_date:%Y%m%d}"
     end_date_str = f"{end_date:%Y%m%d}"
@@ -91,11 +94,11 @@ def fetch_wunderground_pd(station, predict_date, future_days, past_days):
         full_wunderground.index = pd.to_datetime(full_wunderground.index)
     else:
         download_window = 30
-        num_future_requests = future_days // download_window
-        num_past_requests = -(past_days // download_window)
+        num_future_requests = ceil(future_days / download_window)
+        num_past_requests = -ceil(past_days / download_window)
 
         p = Pool(multiprocessing.cpu_count())
-        populate_data_args = [(i, predict_date, station, download_window) for i in range(num_past_requests, num_future_requests + 3)]
+        populate_data_args = [(i, predict_date, station, download_window) for i in range(num_past_requests, num_future_requests + 1)]
         full_wunderground = p.map(fetch_wunderground_pd_window_wrapper, populate_data_args)
         p.close()
         p.join()
@@ -109,7 +112,5 @@ def fetch_wunderground_pd(station, predict_date, future_days, past_days):
 
 if __name__ == "__main__":
     for station in stations:
-        data = fetch_wunderground(station=station, end_date_str= str(datetime.date.today()), download_window=20)
-        os.makedirs("wunderground", exist_ok=True)
-        with open(os.path.join("wunderground", f"{station}.json"), "w") as f:
-            json.dump(data, f)
+        wunderground_days = 365 # get one year of past data
+        fetch_wunderground_pd(station, predict_date=datetime.date.today(), future_days=0, past_days=wunderground_days)

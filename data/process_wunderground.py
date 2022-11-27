@@ -43,4 +43,4 @@ def process_wunderground(station):
 if __name__ == "__main__":
     for station in utils.stations:
         process_wunderground(station)
-        logging.debug(f"Processed data for: {station}")
+        logging.info(f"Processed data for: {station}")

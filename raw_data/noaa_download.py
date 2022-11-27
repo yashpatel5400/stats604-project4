@@ -39,4 +39,4 @@ if __name__ == "__main__":
     for station_code in station_code_to_noaa:
         url = f"{base_url}/{station_code_to_noaa[station_code]}.dly"
         urllib.request.urlretrieve(url, os.path.join(utils.raw_noaa_cache, f"{station_code}.dly"))
-        logging.debug(f"Scraped data for: {station_code}")
+        logging.info(f"Scraped data for: {station_code}")

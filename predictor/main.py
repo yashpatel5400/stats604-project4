@@ -22,7 +22,7 @@ from data.process_wunderground import process_wunderground_df
 
 import logging
 # if you want more verbose debugging information, uncomment the following line
-# logging.basicConfig(level=logging.DEBUG)
+# logging.basicConfig(level=logging.INFO)
 
 if __name__ == "__main__":
     keep_features = ['temp_min', 'wspd_min', 'pressure_min', 'heat_index_min', 'dewPt_min',

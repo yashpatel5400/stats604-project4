@@ -61,7 +61,7 @@ def fetch_wunderground_pd_window(window_idx, start_date, station, download_windo
     window_days = datetime.timedelta(days=download_window)
     prediction_date = start_date + window_idx * window_days
     end_date_str = f"{prediction_date:%Y-%m-%d}"
-    logging.debug(f"Requesting date: {end_date_str}")
+    logging.info(f"Requesting date: {end_date_str}")
     
     wunderground_raw_data = fetch_wunderground(station=station, end_date_str=f"{prediction_date:%Y-%m-%d}", download_window=download_window)
     wunderground_data = pd.DataFrame(wunderground_raw_data)
@@ -114,7 +114,7 @@ def fetch_wunderground_pd(station, predict_date, future_days, past_days, ignore_
         if not ignore_cache:
             full_wunderground.to_csv(cache_fn)
     end = time.time()
-    logging.debug(f"Scraped data in: {end - start} s")
+    logging.info(f"Scraped data in: {end - start} s")
     return full_wunderground
 
 if __name__ == "__main__":

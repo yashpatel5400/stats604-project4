@@ -131,7 +131,7 @@ def eval_single_window(start_eval_date, eval_len, wunderground_lookback, model):
         
         predictions = model.predict(eval_data)
         mse = (np.square(eval_target - predictions)).mean()
-        logging.debug(mse)
+        logging.info(mse)
         mses.append(mse)
     return mses
 
@@ -160,6 +160,7 @@ def eval(model):
     return mses_per_year
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     keep_features = ['temp_min', 'wspd_min', 'pressure_min', 'heat_index_min', 'dewPt_min',
        'temp_mean', 'wspd_mean', 'pressure_mean', 'heat_index_mean',
        'dewPt_mean', 'temp_max', 'wspd_max', 'pressure_max', 'heat_index_max',
@@ -169,4 +170,4 @@ if __name__ == "__main__":
     model = MetaPredictor(reg, window_size, keep_features)
 
     eval_mses = eval(model)
-    logging.debug(eval_mses)
+    logging.info(eval_mses)

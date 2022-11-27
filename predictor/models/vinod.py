@@ -96,7 +96,7 @@ class MixPrevDayHistoricalPredictor(Predictor):
         noaa = noaa*0.18+32.0
 
         current_date = wunderground['date_col'].iloc[-1]
-        logging.debug(current_date)
+        logging.info(current_date)
 
         date_range = pd.date_range(current_date - pd.DateOffset(days=365) , current_date - timedelta(days = 1),  freq='d')
         month_day_index= [(date.month, date.day) for date in date_range]
@@ -161,5 +161,5 @@ class MetaPredictor(Predictor):
             self.reg.fit(X, y)
             stations_data.append(self.reg.predict(test_X))
         end = time.time()
-        logging.debug(f"Performed prediction in: {end - start} s")
+        logging.info(f"Performed prediction in: {end - start} s")
         return np.array(stations_data).flatten()

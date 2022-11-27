@@ -166,4 +166,4 @@ def process_noaa(station):
 if __name__ == "__main__":
     for station in utils.stations:
         process_noaa(station)
-        logging.debug(f"Processed data for: {station}")
+        logging.info(f"Processed data for: {station}")

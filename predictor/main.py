@@ -12,11 +12,13 @@ sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 
 import numpy as np
 import datetime
+from sklearn.multioutput import MultiOutputRegressor
+from sklearn.ensemble import GradientBoostingRegressor
 
 import utils
 from predictor.models.vinod import MetaPredictor
-from sklearn.multioutput import MultiOutputRegressor
-from sklearn.ensemble import GradientBoostingRegressor
+from raw_data.wunderground_download import fetch_wunderground_pd
+from data.process_wunderground import process_wunderground_df
 
 if __name__ == "__main__":
     keep_features = ['temp_min', 'wspd_min', 'pressure_min', 'heat_index_min', 'dewPt_min',
@@ -27,7 +29,14 @@ if __name__ == "__main__":
     window_size = 3
     model = MetaPredictor(reg, window_size, keep_features)
 
-    data = utils.load_processed_data()
+    data = utils.load_processed_data() # gets all the historical data from the 1st prediction day
+    
+    # gets all the more "recent" data that wasn't downloaded initially and updates the "wunderground" entry
+    for station in data:
+        raw_recent_data = fetch_wunderground_pd(station, predict_date=datetime.date.today(), future_days=0, past_days=30)
+        processed_recent_data = process_wunderground_df(raw_recent_data, station)
+        data[station]["wunderground"] = data[station]["wunderground"].combine_first(processed_recent_data)
+
     predictions = model.predict(data)
     
     prediction_date = f"{datetime.date.today():%Y-%m-%d}"

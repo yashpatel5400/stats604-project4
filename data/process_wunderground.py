@@ -14,14 +14,7 @@ import numpy as np
 from raw_data import wunderground_download
 import predictor.utils as utils
 
-def process_wunderground(station):
-    """Wunderground returns granular (hourly) data points, but we only want daily 
-    for prediction: this coarsens the dataset
-    """
-    wunderground_path = os.path.join(utils.raw_wunderground_cache, f"{station}.csv")
-    raw_wunderground_data = pd.read_csv(wunderground_path, index_col=0)
-    raw_wunderground_data.index = pd.to_datetime(raw_wunderground_data.index)
-    
+def process_wunderground_df(raw_wunderground_data, station):
     local_timezone = pytz.timezone(utils.fetch_timezone(station))
     raw_wunderground_data['date_col'] = pd.to_datetime(raw_wunderground_data.index).tz_convert(local_timezone).date
         
@@ -31,8 +24,17 @@ def process_wunderground(station):
     mins  = raw_wunderground_data.groupby(['date_col'], sort=False)[aggregated_columns].min().set_axis([f"{column}_min" for column in aggregated_columns], axis=1, inplace=False).set_index(raw_wunderground_data['date_col'].unique())
     wind_dir = raw_wunderground_data.groupby(['date_col'], sort=False)['wdir_cardinal'].agg(
         lambda x: pd.Series.mode(x)[0]).astype("category").to_frame("wdir_mode").set_index(raw_wunderground_data['date_col'].unique())
-    processed_wunderground = pd.concat((mins, means, maxes, wind_dir), axis=1)
+    return pd.concat((mins, means, maxes, wind_dir), axis=1)
 
+def process_wunderground(station):
+    """Wunderground returns granular (hourly) data points, but we only want daily 
+    for prediction: this coarsens the dataset
+    """
+    wunderground_path = os.path.join(utils.raw_wunderground_cache, f"{station}.csv")
+    raw_wunderground_data = pd.read_csv(wunderground_path, index_col=0)
+    raw_wunderground_data.index = pd.to_datetime(raw_wunderground_data.index)
+    
+    processed_wunderground = process_wunderground_df(raw_wunderground_data, station)
     os.makedirs(utils.processed_wunderground_cache, exist_ok=True)
     wunderground_out_path = os.path.join(utils.processed_wunderground_cache, f"{station}.csv")
     processed_wunderground.to_csv(wunderground_out_path)

@@ -1,4 +1,4 @@
-![](https://www.noaa.gov/sites/default/files/styles/landscape_width_1275/public/legacy/image/2019/Sep/Humberto_hero_logo.jpg?h=8efce669&itok=gQB9hP3x)
+![](https://onemontgomerygreen.org/wordpress/wp-content/uploads/2019/03/NEW_NOAA-Open-House-Banner_030419.jpg)
 
 
 Weather Prediction (STATS 604)

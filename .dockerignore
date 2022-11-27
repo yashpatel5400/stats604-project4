@@ -1,0 +1,5 @@
+data/processed_noaa
+data/processed_wunderground
+data/raw_noaa
+data/raw_wunderground
+*/__pycache__/

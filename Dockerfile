@@ -10,9 +10,13 @@ RUN apt install -y \
     wget \
     curl \
     vim
-RUN python -m venv weather
-RUN bash /weather/bin/activate
-RUN pip install pandas numpy scikit-learn seaborn matplotlib torch
+RUN pip install pandas numpy scikit-learn seaborn matplotlib requests statsmodels
 RUN find -name "*.pyc" -exec rm {} \;
-RUN git clone https://github.com/yashpatel5400/stats604-project4.git
 WORKDIR /stats604-project4
+COPY data ./data/
+COPY raw_data ./raw_data/
+COPY predictor ./predictor/
+COPY Makefile ./
+RUN make clean
+RUN make rawdata
+RUN make

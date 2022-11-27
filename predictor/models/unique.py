@@ -52,24 +52,19 @@ class ArimaPredictor(Predictor):
         for station in utils.stations:
 
             df = data[station]["wunderground"]
-            temp_max = df.groupby(by = [df.index.date])['temp'].max().asfreq('D')
-            temp_min = df.groupby(by = [df.index.date])['temp'].min().asfreq('D')
-            temp_avg = df.groupby(by = [df.index.date])['temp'].mean().asfreq('D')
+            temp_max = df['temp_max'].asfreq('D')
+            temp_min = df['temp_min'].asfreq('D')
+            temp_avg = df['temp_mean'].asfreq('D')
             
             
 
            
         
-     
+
             min_model = SARIMAX(temp_min, order=(3,1,1), seasonal_order=(1, 0, 0, 12)).fit(disp=False)
            
     
             avg_model = SARIMAX(temp_avg, order=(3,1,1), seasonal_order=(1, 0, 0, 12)).fit(disp=False)
-            #avg_model.predict(start = temp_avg.index[-100]).plot(label = "prediction")
-            #avg_model.forecast(steps = 5, alpha = 0.95).plot(label = "forecast")
-            # plt.legend()
-            # plt.title(str(station))
-            # plt.show()
             max_model = SARIMAX(temp_max, order=(3,1,1), seasonal_order=(1, 0 , 0, 12)).fit(disp=False)
             
             min_fc = min_model.forecast(steps = 5)
@@ -111,4 +106,4 @@ class NLinPredict(Predictor):
             stations_data.append(reg.predict(test_X))
         end = time.time()
         print(f"Performed prediction in: {end - start} s")
-        return np.array(stations_data).flatten()
+        return np.array(stations_data).flatten()   

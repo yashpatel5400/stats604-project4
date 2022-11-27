@@ -5,6 +5,7 @@ sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 import urllib.request
 import json
 import os
+import logging
 
 import predictor.utils as utils
 
@@ -38,4 +39,4 @@ if __name__ == "__main__":
     for station_code in station_code_to_noaa:
         url = f"{base_url}/{station_code_to_noaa[station_code]}.dly"
         urllib.request.urlretrieve(url, os.path.join(utils.raw_noaa_cache, f"{station_code}.dly"))
-        print(f"Scraped data for: {station_code}")
+        logging.debug(f"Scraped data for: {station_code}")

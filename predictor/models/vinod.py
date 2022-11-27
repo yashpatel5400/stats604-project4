@@ -3,6 +3,7 @@ import os
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", ".."))
 
 import numpy as np
+import logging
 import utils
 import datetime
 import pandas as pd
@@ -95,7 +96,7 @@ class MixPrevDayHistoricalPredictor(Predictor):
         noaa = noaa*0.18+32.0
 
         current_date = wunderground['date_col'].iloc[-1]
-        print(current_date)
+        logging.debug(current_date)
 
         date_range = pd.date_range(current_date - pd.DateOffset(days=365) , current_date - timedelta(days = 1),  freq='d')
         month_day_index= [(date.month, date.day) for date in date_range]
@@ -160,5 +161,5 @@ class MetaPredictor(Predictor):
             self.reg.fit(X, y)
             stations_data.append(self.reg.predict(test_X))
         end = time.time()
-        print(f"Performed prediction in: {end - start} s")
+        logging.debug(f"Performed prediction in: {end - start} s")
         return np.array(stations_data).flatten()

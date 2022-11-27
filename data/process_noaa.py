@@ -6,6 +6,7 @@ import os
 import json
 import datetime
 import pandas as pd
+import logging
 
 import predictor.utils as utils
 
@@ -162,4 +163,4 @@ def process_noaa(station):
 if __name__ == "__main__":
     for station in utils.stations:
         process_noaa(station)
-        print(f"Processed data for: {station}")
+        logging.debug(f"Processed data for: {station}")

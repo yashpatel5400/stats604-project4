@@ -2,6 +2,7 @@ import os
 import pandas as pd
 import requests
 import json
+import logging
 
 # globally referenced paths
 raw_wunderground_cache = "data/raw_wunderground"
@@ -45,7 +46,7 @@ def load_processed_data_src(data_src):
     }
     """
     if data_src not in ["noaa", "wunderground"]:
-        print(f"Invalid data source requested: {data_src} -- must be noaa or wunderground")
+        logging.warning(f"Invalid data source requested: {data_src} -- must be noaa or wunderground")
         return None
 
     station_to_processed_data = {}

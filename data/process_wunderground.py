@@ -7,6 +7,7 @@ warnings.simplefilter(action='ignore', category=FutureWarning) # ignore FutureWa
 
 import datetime
 import pickle
+import logging
 import pytz
 import pandas as pd
 import numpy as np
@@ -42,4 +43,4 @@ def process_wunderground(station):
 if __name__ == "__main__":
     for station in utils.stations:
         process_wunderground(station)
-        print(f"Processed data for: {station}")
+        logging.debug(f"Processed data for: {station}")

@@ -3,6 +3,7 @@ import os
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", ".."))
 
 import pandas as pd
+import logging
 import datetime
 from datetime import date
 import numpy as np
@@ -109,5 +110,5 @@ class NLinPredict(Predictor):
             reg = MLPRegressor(random_state=1, hidden_layer_sizes=(20,20, ), max_iter=2000, solver='lbfgs', learning_rate= 'adaptive').fit(X, y)
             stations_data.append(reg.predict(test_X))
         end = time.time()
-        print(f"Performed prediction in: {end - start} s")
+        logging.debug(f"Performed prediction in: {end - start} s")
         return np.array(stations_data).flatten()   

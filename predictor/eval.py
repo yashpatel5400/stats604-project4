@@ -7,6 +7,7 @@ warnings.simplefilter(action='ignore', category=FutureWarning) # ignore FutureWa
 
 import datetime
 import pickle
+import logging
 import pytz
 import pandas as pd
 import numpy as np
@@ -130,7 +131,7 @@ def eval_single_window(start_eval_date, eval_len, wunderground_lookback, model):
         
         predictions = model.predict(eval_data)
         mse = (np.square(eval_target - predictions)).mean()
-        print(mse)
+        logging.debug(mse)
         mses.append(mse)
     return mses
 
@@ -168,4 +169,4 @@ if __name__ == "__main__":
     model = MetaPredictor(reg, window_size, keep_features)
 
     eval_mses = eval(model)
-    print(eval_mses)
+    logging.debug(eval_mses)

@@ -6,6 +6,7 @@ import numpy as np
 import utils
 import time
 import pandas as pd
+import logging
 from datetime import date, timedelta
 
 from sklearn.multioutput import MultiOutputRegressor
@@ -51,5 +52,5 @@ class LRPredictor(Predictor):
             reg = MultiOutputRegressor(GradientBoostingRegressor(n_estimators=20,)).fit(X, y)
             stations_data.append(reg.predict(test_X))
         end = time.time()
-        print(f"Performed prediction in: {end - start} s")
+        logging.debug(f"Performed prediction in: {end - start} s")
         return np.array(stations_data).flatten()

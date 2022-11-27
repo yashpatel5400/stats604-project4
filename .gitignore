@@ -1,6 +1,8 @@
 # Raw data
-raw_data/
-data/
+data/processed_noaa/
+data/processed_wunderground/
+data/raw_noaa/
+data/raw_wunderground/
 predictor/eval/
 
 # Byte-compiled / optimized / DLL files

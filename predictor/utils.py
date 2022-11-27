@@ -5,7 +5,7 @@ import json
 
 # globally referenced paths
 raw_wunderground_cache = "data/raw_wunderground"
-procesed_wunderground_cache = "data/processed_wunderground"
+processed_wunderground_cache = "data/processed_wunderground"
 raw_noaa_cache = "data/raw_noaa"
 processed_noaa_cache = "data/processed_noaa"
 

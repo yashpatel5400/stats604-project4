@@ -74,7 +74,7 @@ def fetch_wunderground_pd_window(window_idx, start_date, station, download_windo
 def fetch_wunderground_pd_window_wrapper(args):
   return fetch_wunderground_pd_window(*args)
 
-def fetch_wunderground_pd(station, predict_date, future_days, past_days):
+def fetch_wunderground_pd(station, predict_date, future_days, past_days, ignore_cache=False):
     """Downloads Wunderground raw data and constructs a full dataset of the following
     window: [predict_date - past_days, predict_date + future_days] 
 
@@ -94,7 +94,7 @@ def fetch_wunderground_pd(station, predict_date, future_days, past_days):
         cache_fn = os.path.join(utils.raw_wunderground_cache, f"{station}-{predict_date:%Y-%m-%d}-{future_days}-{past_days}.csv")
 
     start = time.time()
-    if os.path.exists(cache_fn):
+    if not ignore_cache and os.path.exists(cache_fn):
         full_wunderground = pd.read_csv(cache_fn, index_col=0)
         full_wunderground.index = pd.to_datetime(full_wunderground.index)
     else:
@@ -110,7 +110,8 @@ def fetch_wunderground_pd(station, predict_date, future_days, past_days):
         
         full_wunderground = list(full_wunderground)
         full_wunderground = pd.concat(full_wunderground)
-        full_wunderground.to_csv(cache_fn)
+        if not ignore_cache:
+            full_wunderground.to_csv(cache_fn)
     end = time.time()
     print(f"Scraped data in: {end - start} s")
     return full_wunderground

@@ -33,10 +33,9 @@ if __name__ == "__main__":
     
     # gets all the more "recent" data that wasn't downloaded initially and updates the "wunderground" entry
     for station in data:
-        raw_recent_data = fetch_wunderground_pd(station, predict_date=datetime.date.today(), future_days=0, past_days=30)
+        raw_recent_data = fetch_wunderground_pd(station, predict_date=datetime.date.today(), future_days=0, past_days=30, ignore_cache=True)
         processed_recent_data = process_wunderground_df(raw_recent_data, station)
         data[station]["wunderground"] = data[station]["wunderground"].combine_first(processed_recent_data)
-
     predictions = model.predict(data)
     
     prediction_date = f"{datetime.date.today():%Y-%m-%d}"

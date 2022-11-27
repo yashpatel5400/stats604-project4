@@ -66,6 +66,7 @@ def get_station_eval_task(full_eval_data, prediction_date, station):
             dataset_view = full_wunderground[full_wunderground.index >= strict_cutoff]
 
         # Wunderground returns granular (hourly) data points, but we only want daily for prediction: this coarsens the dataset
+        # TODO: time permitting, could remove this since it is a bit of a duplicate from process_wunderground
         aggregated_columns = ["temp", "wspd", "pressure", "heat_index", 'dewPt']
         maxes = dataset_view.groupby(['date_col'], sort=False)[aggregated_columns].max().set_axis([f"{column}_max" for column in aggregated_columns], axis=1, inplace=False).set_index(dataset_view['date_col'].unique())
         means = dataset_view.groupby(['date_col'], sort=False)[aggregated_columns].mean().set_axis([f"{column}_mean" for column in aggregated_columns], axis=1, inplace=False).set_index(dataset_view['date_col'].unique())

@@ -14,6 +14,7 @@ import numpy as np
 import datetime
 from sklearn.multioutput import MultiOutputRegressor
 from sklearn.ensemble import GradientBoostingRegressor
+from sklearn.ensemble import RandomForestRegressor
 
 import utils
 from predictor.models.vinod import MetaPredictor
@@ -29,7 +30,8 @@ if __name__ == "__main__":
        'temp_mean', 'wspd_mean', 'pressure_mean', 'heat_index_mean',
        'dewPt_mean', 'temp_max', 'wspd_max', 'pressure_max', 'heat_index_max',
        'dewPt_max', 'wdir_mode']
-    reg = MultiOutputRegressor(GradientBoostingRegressor(n_estimators=20,))
+    # reg = MultiOutputRegressor(GradientBoostingRegressor(n_estimators=20,))
+    reg = RandomForestRegressor(max_depth=5)
     window_size = 3
     model = MetaPredictor(reg, window_size, keep_features)
 

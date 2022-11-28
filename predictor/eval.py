@@ -25,6 +25,7 @@ from predictor.models.vinod import PrevDayHistoricalPredictor
 from predictor.models.vinod import MetaPredictor
 from sklearn.multioutput import MultiOutputRegressor
 from sklearn.ensemble import GradientBoostingRegressor
+from sklearn.ensemble import RandomForestRegressor
 
 def prepare_full_eval_data(start_eval_date, eval_len, wunderground_lookback):
     """Prepares data for evaluation for a window of [start_eval_date, start_eval_date + eval_len] 
@@ -147,8 +148,8 @@ def eval(model):
     }
     """
     
-    start_year = 2019
-    num_years = 1
+    start_year = 2018
+    num_years = 3
     mses_per_year = {}
     wunderground_lookback = 365 # how many days back to return of wunderground data
     eval_len = 10 # how many days we running evaluation for
@@ -166,6 +167,7 @@ if __name__ == "__main__":
        'dewPt_mean', 'temp_max', 'wspd_max', 'pressure_max', 'heat_index_max',
        'dewPt_max', 'wdir_mode']
     reg = MultiOutputRegressor(GradientBoostingRegressor(n_estimators=20,))
+    # reg = RandomForestRegressor(max_depth=5)
     window_size = 3
     model = MetaPredictor(reg, window_size, keep_features)
 

@@ -21,6 +21,7 @@ from predictor.models.unique import HistoricAveragePredictor
 from predictor.models.seamus import BasicOLSPredictor
 from predictor.models.seamus import LassoPredictor
 from predictor.models.seamus import GBTPredictor
+from predictor.models.seamus import RidgePredictor
 from predictor.models.vinod import PrevDayHistoricalPredictor
 from predictor.models.vinod import MetaPredictor
 from sklearn.multioutput import MultiOutputRegressor
@@ -169,8 +170,9 @@ if __name__ == "__main__":
        'dewPt_max', 'wdir_mode']
     # reg = MultiOutputRegressor(GradientBoostingRegressor(n_estimators=20,))
     # reg = RandomForestRegressor(max_depth=5)
+    #reg = RidgePredictor()
     window_size = 3
-    # model = MetaPredictor(reg, window_size, keep_features)
+    #model = MetaPredictor(reg, window_size, keep_features)
     model = PrevDayHistoricalPredictor(weights=np.array([1, 0.80, 0.60, 0.40, 0.20]))
 
     eval_mses = eval(model)

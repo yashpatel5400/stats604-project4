@@ -151,7 +151,7 @@ def eval(model):
     """
     
     start_year = 2017
-    num_years = 5
+    num_years = 2
     mses_per_year = {}
     wunderground_lookback = 365 # how many days back to return of wunderground data
     eval_len = 10 # how many days we running evaluation for
@@ -162,6 +162,12 @@ def eval(model):
         mses_per_year[year] = eval_single_window(start_eval_date, eval_len, wunderground_lookback, model)
     return mses_per_year
 
+def compute_avg_mse(mses):
+    avg_mse = {}
+    for year, mse_list in mses.items():
+        avg_mse[year] = np.mean(mse_list)
+    return avg_mse
+
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
     keep_features = ['temp_min', 'wspd_min', 'pressure_min', 'heat_index_min', 'dewPt_min',
@@ -169,11 +175,12 @@ if __name__ == "__main__":
        'dewPt_mean', 'temp_max', 'wspd_max', 'pressure_max', 'heat_index_max',
        'dewPt_max', 'wdir_mode']
     # reg = MultiOutputRegressor(GradientBoostingRegressor(n_estimators=20,))
-    #reg = RandomForestRegressor(max_depth=5)
-    #reg = RidgePredictor()
+    reg = RandomForestRegressor(max_depth=5)
+    # reg = RidgePredictor()
     window_size = 3
     model = MetaPredictor(reg, window_size, keep_features)
     #model = PrevDayHistoricalPredictor(weights=np.array([1, 0.80, 0.60, 0.40, 0.20]))
 
     eval_mses = eval(model)
+    print(compute_avg_mse(eval_mses))
     logging.info(eval_mses)

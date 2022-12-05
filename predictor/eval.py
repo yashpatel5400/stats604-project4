@@ -169,11 +169,11 @@ if __name__ == "__main__":
        'dewPt_mean', 'temp_max', 'wspd_max', 'pressure_max', 'heat_index_max',
        'dewPt_max', 'wdir_mode']
     # reg = MultiOutputRegressor(GradientBoostingRegressor(n_estimators=20,))
-    # reg = RandomForestRegressor(max_depth=5)
+    #reg = RandomForestRegressor(max_depth=5)
     #reg = RidgePredictor()
     window_size = 3
-    #model = MetaPredictor(reg, window_size, keep_features)
-    model = PrevDayHistoricalPredictor(weights=np.array([1, 0.80, 0.60, 0.40, 0.20]))
+    model = MetaPredictor(reg, window_size, keep_features)
+    #model = PrevDayHistoricalPredictor(weights=np.array([1, 0.80, 0.60, 0.40, 0.20]))
 
     eval_mses = eval(model)
     logging.info(eval_mses)

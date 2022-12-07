@@ -50,11 +50,6 @@ from sklearn.ensemble import GradientBoostingRegressor
 from predictor.models.predictor_scaffold import Predictor
 
 # logging.basicConfig(level=logging.INFO)
-
-keep_features = ['temp_min', 'wspd_min', 'pressure_min', 'heat_index_min', 'dewPt_min',
-   'temp_mean', 'wspd_mean', 'pressure_mean', 'heat_index_mean',
-   'dewPt_mean', 'temp_max', 'wspd_max', 'pressure_max', 'heat_index_max',
-   'dewPt_max', 'wdir_mode']
 ```
 
 # Weather Prediction
@@ -168,7 +163,8 @@ def fetch_wunderground(station, end_date_str="2022-11-03", download_window=5):
         'startDate': start_date_str,
         'endDate': end_date_str,
     }
-    response = requests.get(f'https://api.weather.com/v1/location/{station}:9:US/observations/historical.json', params=params, headers=headers)
+    response = requests.get(f'https://api.weather.com/v1/location/{station}:9:US/observations/historical.json', \
+        params=params, headers=headers)
     return json.loads(response.text)["observations"]
 ```
 
@@ -193,9 +189,11 @@ def fetch_wunderground_pd_window(window_idx, start_date, station, download_windo
     end_date_str = f"{prediction_date:%Y-%m-%d}"
     logging.info(f"Requesting date: {end_date_str}")
     
-    wunderground_raw_data = fetch_wunderground(station=station, end_date_str=f"{prediction_date:%Y-%m-%d}", download_window=download_window)
+    wunderground_raw_data = fetch_wunderground(station=station, end_date_str=f"{prediction_date:%Y-%m-%d}", \
+        download_window=download_window)
     wunderground_data = pd.DataFrame(wunderground_raw_data)
-    wunderground_data["date"] = wunderground_data["valid_time_gmt"].apply(lambda d: datetime.datetime.fromtimestamp(d))
+    wunderground_data["date"] = wunderground_data["valid_time_gmt"].apply(lambda d: \
+        datetime.datetime.fromtimestamp(d))
     wunderground_data = wunderground_data.set_index("date")
     # ARGHHH, the column is named "GMT" but it's actually the local time zone!!
     wunderground_data.index = wunderground_data.index.tz_localize("EST")
@@ -222,7 +220,8 @@ def fetch_wunderground_pd(station, predict_date, future_days, past_days, ignore_
     if predict_date == datetime.date.today():
         cache_fn = os.path.join(utils.raw_wunderground_cache, f"{station}.csv")
     else:
-        cache_fn = os.path.join(utils.raw_wunderground_cache, f"{station}-{predict_date:%Y-%m-%d}-{future_days}-{past_days}.csv")
+        cache_fn = os.path.join(utils.raw_wunderground_cache, \
+            f"{station}-{predict_date:%Y-%m-%d}-{future_days}-{past_days}.csv")
 
     start = time.time()
     if not ignore_cache and os.path.exists(cache_fn):
@@ -234,7 +233,8 @@ def fetch_wunderground_pd(station, predict_date, future_days, past_days, ignore_
         num_past_requests = -ceil(past_days / download_window)
 
         p = Pool(multiprocessing.cpu_count())
-        populate_data_args = [(i, predict_date, station, download_window) for i in range(num_past_requests, num_future_requests + 1)]
+        populate_data_args = [(i, predict_date, station, download_window) \
+            for i in range(num_past_requests, num_future_requests + 1)]
         full_wunderground = p.map(fetch_wunderground_pd_window_wrapper, populate_data_args)
         p.close()
         p.join()
@@ -252,7 +252,8 @@ def fetch_wunderground_pd(station, predict_date, future_days, past_days, ignore_
 ```python
 for station in utils.stations:
     wunderground_days = 365 # get one year of past data
-    fetch_wunderground_pd(station, predict_date=datetime.date.today(), future_days=0, past_days=wunderground_days)
+    fetch_wunderground_pd(station, predict_date=datetime.date.today(), \
+        future_days=0, past_days=wunderground_days)
 ```
 
 Using this fetches a list of the *hourly* measurements, i.e. temperature, wind speed, wind direction, etc... However, the final task was specifically interested in measuring attributes at the daily time scale, meaning such granular measurements would not be useful. Unlike the hourly contents itself, the Wunderground site does *not* retrieve its daily summaries from an endpoint: after all, doing so would be redundant given that the latter can be directly computed from the former. Therefore, the Wunderground site both dynamically fetches the hourly content and then computes the daily summaries that are shown. We, therefore, had to replicate this ourselves to get the min, max, and average temperatures for training. 
@@ -269,7 +270,8 @@ def fetch_latlon(station):
         dummy_url = f"https://www.wunderground.com/history/daily/{station}/date/2021-11-05"
         ans = requests.get(dummy_url)
         script_vals = ans.text.split("&q;:")
-        extract_lat_or_lon = lambda lat_or_lon : float([script_vals[i+1] for i, v in enumerate(script_vals) if lat_or_lon in v][0].split(",")[0])
+        extract_lat_or_lon = lambda lat_or_lon : float([script_vals[i+1] for i, v in enumerate(script_vals) \
+            if lat_or_lon in v][0].split(",")[0])
         station_latlon_cache[station] = (extract_lat_or_lon("latitude"), extract_lat_or_lon("longitude"))
     return station_latlon_cache[station]
 
@@ -306,9 +308,12 @@ def process_wunderground_df(raw_wunderground_data, station):
     raw_wunderground_data['date_col'] = pd.to_datetime(raw_wunderground_data.index).tz_convert(local_timezone).date
         
     aggregated_columns = ["temp", "wspd", "pressure", "heat_index", 'dewPt']
-    maxes = raw_wunderground_data.groupby(['date_col'], sort=False)[aggregated_columns].max().set_axis([f"{column}_max" for column in aggregated_columns], axis=1, inplace=False).set_index(raw_wunderground_data['date_col'].unique())
-    means = raw_wunderground_data.groupby(['date_col'], sort=False)[aggregated_columns].mean().set_axis([f"{column}_mean" for column in aggregated_columns], axis=1, inplace=False).set_index(raw_wunderground_data['date_col'].unique())
-    mins  = raw_wunderground_data.groupby(['date_col'], sort=False)[aggregated_columns].min().set_axis([f"{column}_min" for column in aggregated_columns], axis=1, inplace=False).set_index(raw_wunderground_data['date_col'].unique())
+    maxes = raw_wunderground_data.groupby(['date_col'], sort=False)[aggregated_columns].max().set_axis([f"{column}_max"\
+         for column in aggregated_columns], axis=1, inplace=False).set_index(raw_wunderground_data['date_col'].unique())
+    means = raw_wunderground_data.groupby(['date_col'], sort=False)[aggregated_columns].mean().set_axis([f"{column}_mean"\
+         for column in aggregated_columns], axis=1, inplace=False).set_index(raw_wunderground_data['date_col'].unique())
+    mins  = raw_wunderground_data.groupby(['date_col'], sort=False)[aggregated_columns].min().set_axis([f"{column}_min"\
+         for column in aggregated_columns], axis=1, inplace=False).set_index(raw_wunderground_data['date_col'].unique())
     wind_dir = raw_wunderground_data.groupby(['date_col'], sort=False)['wdir_cardinal'].agg(
         lambda x: pd.Series.mode(x)[0]).astype("category").to_frame("wdir_mode").set_index(raw_wunderground_data['date_col'].unique())
     return pd.concat((mins, means, maxes, wind_dir), axis=1)
@@ -388,15 +393,19 @@ def get_station_eval_task(full_eval_data, prediction_date, station):
         # Wunderground returns granular (hourly) data points, but we only want daily for prediction: this coarsens the dataset
         # TODO: time permitting, could remove this since it is a bit of a duplicate from process_wunderground
         aggregated_columns = ["temp", "wspd", "pressure", "heat_index", 'dewPt']
-        maxes = dataset_view.groupby(['date_col'], sort=False)[aggregated_columns].max().set_axis([f"{column}_max" for column in aggregated_columns], axis=1, inplace=False).set_index(dataset_view['date_col'].unique())
-        means = dataset_view.groupby(['date_col'], sort=False)[aggregated_columns].mean().set_axis([f"{column}_mean" for column in aggregated_columns], axis=1, inplace=False).set_index(dataset_view['date_col'].unique())
-        mins  = dataset_view.groupby(['date_col'], sort=False)[aggregated_columns].min().set_axis([f"{column}_min" for column in aggregated_columns], axis=1, inplace=False).set_index(dataset_view['date_col'].unique())
+        maxes = dataset_view.groupby(['date_col'], sort=False)[aggregated_columns].max().set_axis([f"{column}_max" \
+            for column in aggregated_columns], axis=1, inplace=False).set_index(dataset_view['date_col'].unique())
+        means = dataset_view.groupby(['date_col'], sort=False)[aggregated_columns].mean().set_axis([f"{column}_mean" \
+            for column in aggregated_columns], axis=1, inplace=False).set_index(dataset_view['date_col'].unique())
+        mins  = dataset_view.groupby(['date_col'], sort=False)[aggregated_columns].min().set_axis([f"{column}_min" \
+            for column in aggregated_columns], axis=1, inplace=False).set_index(dataset_view['date_col'].unique())
         wind_dir = dataset_view.groupby(['date_col'], sort=False)['wdir_cardinal'].agg(
             lambda x: pd.Series.mode(x)[0]).astype("category").to_frame("wdir_mode").set_index(dataset_view['date_col'].unique())
         aggregated_wunderground = pd.concat((mins, means, maxes, wind_dir), axis=1)
 
         if cutoff_side == 0:
-            cut_wunderground = aggregated_wunderground.drop(aggregated_wunderground.index[0], axis=0) # first row is often partial day based on the time zone
+            cut_wunderground = aggregated_wunderground.drop(aggregated_wunderground.index[0], axis=0) 
+            # first row is often partial day based on the time zone
         else:
             evaluation_data = aggregated_wunderground
 
@@ -405,7 +414,8 @@ def get_station_eval_task(full_eval_data, prediction_date, station):
     cut_noaa = full_noaa.iloc[full_noaa.index < noaa_cutoff]
     
     forecast_horizon = 5
-    prediction_window = [prediction_date + datetime.timedelta(days=forecast_day) for forecast_day in range(1, forecast_horizon + 1)]
+    prediction_window = [prediction_date + datetime.timedelta(days=forecast_day) for forecast_day in \
+        range(1, forecast_horizon + 1)]
     prediction_targets_df = evaluation_data.loc[prediction_window]
     target = []
     for i in range(len(prediction_targets_df)):
@@ -499,7 +509,8 @@ class PrevDayPredictor(Predictor):
     def __init__(self):
         pass
     def predict(self, data):
-        stations_data = [list(data[station]["wunderground"].iloc[-1][["temp_min","temp_mean","temp_max"]].values) * 5 for station in utils.stations]
+        stations_data = [list(data[station]["wunderground"].iloc[-1]\
+            [["temp_min","temp_mean","temp_max"]].values) * 5 for station in utils.stations]
         stations_data = np.array(stations_data).flatten()
         return stations_data
 
@@ -532,9 +543,6 @@ class HistoricAveragePredictor(Predictor):
                 date_ = (current_date + pd.DateOffset(days=i))
                 stations_data.append(df[df.index == (date_.month, date_.day)].values.flatten())
            
-       
-             
-           
         stations_data = np.array(stations_data).flatten()
         return stations_data
 
@@ -551,7 +559,7 @@ The Weighted Average baseline predictor interpolates between the Previous Day Pr
 
 
 ```python
-class PrevDayHistoricalPredictor(Predictor):
+class WAPredictor(Predictor):
     def __init__(self, weights):
         self.prev_day_model = PrevDayPredictor()
         self.historical_day_model = HistoricAveragePredictor()
@@ -581,7 +589,7 @@ class PrevDayHistoricalPredictor(Predictor):
         predictions = (prev_day_pred + historical_day_pred).round(1)
         return predictions
 
-WA_pred = PrevDayHistoricalPredictor(weights=[1, 0.80, 0.60, 0.40, 0.20])
+WA_pred = WAPredictor(weights=[1, 0.80, 0.60, 0.40, 0.20])
 ```
 
 Note that the Weighted Average Predictor uses the same fixed set of 5 mixing weights between today's temperature and the historical average temperature across all stations and measurements.  That is, there is a single mixing weight associated with each day out.  The table below provides the mixing weights used in the instantiation ```WA_pred```. 
@@ -614,10 +622,8 @@ class ArimaPredictor(Predictor):
         pass
 
     def predict(self, data):
-
         stations_data = []
         for station in utils.stations:
-
             df = data[station]["wunderground"]
             temp_max = df['temp_max'].asfreq('D')
             temp_min = df['temp_min'].asfreq('D')
@@ -713,24 +719,6 @@ def create_regression_data(data, window_size, features):
 
 The input ```data``` contains the Wunderground data for a specific station. The input ```window_size``` controls how many days of features should be included in each row of $X$, but this was fixed as $3$ (as mentioned above). The input ```features``` control which features (i.e. columns of $X$) should be kept when constructing the regression dataset.  
 
-
-```python
-def create_regression_data(data, window_size, features):
-    if features is not None:
-        keep_data = data[features]
-    else:
-        keep_data = data
-        
-    X, y = [], []
-    target_data = data[["temp_min","temp_mean","temp_max"]].values
-    prediction_window = 5
-    for i in range(len(data) - (window_size + prediction_window + 1)):
-        X.append(keep_data.values[i:i+window_size,:-1].flatten())
-        y.append(target_data[i+window_size+1:i+window_size+1+prediction_window].flatten())
-    test_X = keep_data.values[-window_size-1:-1,:-1].flatten().reshape(1, -1) # the final frame used for future prediction
-    return np.array(X), np.array(y), test_X
-```
-
 #### A Meta-Predictor
 
 In order to expedite the process of model exploration, we additionally implemented a MetaPredictor class which takes in as input a blackbox implementation of a regression model, and uses it to make predictions. That is, instead of having to create a new model class for every type of Regression model we want to try, we can now simply instantiate and pass any regression model as input into the constructor of the MetaPredictor. The MetaPredictor will then train 20 copies of the specified regression model on the regression dataset created by calling ```create_regression_data``` for each station, and then use each of the trained models to make a prediction of the temperatures for the next $5$ days.  The model class below formalizes this idea in code.
@@ -756,13 +744,21 @@ class MetaPredictor(Predictor):
         return np.array(stations_data).flatten()
 ```
 
-Note that each time the function predict is called, the MetaPredictor, makes 20 regression datasets, one for each station, trains the specified regression model on each of the datasets, and uses the trained models to make predictions for the next 5 days for each station. This process is done sequentially, one station at a time. Note that each time ```self.reg.fit``` is called, it erases its previous memory, so that a fresh new model is trained for each station. 
+The MetaPredictor class takes into three inputs in its constructor - the regression model to use to make predictions, the window size mentioned previously, and the the set of features to use to train the regression models. Note that each time the function predict is called, the MetaPredictor, makes 20 regression datasets, one for each station, trains the specified regression model on each of the datasets, and uses the trained models to make predictions for the next 5 days for each station. This process is done sequentially, one station at a time. Note that each time ```self.reg.fit``` is called, it erases its previous memory, so that a fresh new model is trained for each station. 
 
-In the next few sub-sections, we show how the MetaPredictor model class can be used to create a variety of different regression models. 
+In the next few sub-sections, we show how the MetaPredictor model class can be used to create a variety of different regression models. For all of these models, we decided to use all of the features in the Wunderground dataframe, as shown below. 
+
+
+```python
+keep_features = ['temp_min', 'wspd_min', 'pressure_min', 'heat_index_min', 'dewPt_min',
+   'temp_mean', 'wspd_mean', 'pressure_mean', 'heat_index_mean',
+   'dewPt_mean', 'temp_max', 'wspd_max', 'pressure_max', 'heat_index_max',
+   'dewPt_max', 'wdir_mode']
+```
 
 ##### OLS, Lasso, and Ridge
 
-Given the Meta-Predictor, it is easy to construct predictors that use OLS, Lasso, and Ridge Regression models for predicting the temperatures for each station. In particular, the code below shows how to construct each of these regression models using the Meta-Predictor class.  
+Given the Meta-Predictor, it is easy to construct predictors that use OLS, Lasso, and Ridge Regression models for predicting the temperatures for each station. In particular, the code below shows how to construct each of these regression models using the Meta-Predictor class. 
 
 
 ```python
@@ -775,7 +771,6 @@ window_size = 3
 ridge = MetaPredictor(reg, window_size, keep_features)
 
 reg = Lasso(alpha = 10)
-# reg = MultiOutputRegressor(LassoCV(alphas=[1e-4, 1e-3, 1e-2, 1e-1, 1]))
 window_size = 3
 lasso = MetaPredictor(reg, window_size, keep_features)
 ```
@@ -791,7 +786,8 @@ where the activation is relu. Each hidden layer is of dimension $20$ and the out
 
 ```python
 from sklearn.neural_network import MLPRegressor
-reg = MLPRegressor(random_state=1, hidden_layer_sizes=(20,20, ), max_iter=2000, solver='lbfgs', learning_rate= 'adaptive')
+reg = MLPRegressor(random_state=1, hidden_layer_sizes=(20,20, ), max_iter=2000, \
+    solver='lbfgs', learning_rate= 'adaptive')
 window_size = 3
 mlp = MetaPredictor(reg, window_size, keep_features)
 ```
@@ -808,7 +804,7 @@ Gradient Boosted Trees are an important class of Ensemble methods that trains a 
 
 ![](gradientboosting.png)
 
-One important note is that Gradient Boosting can only be performed when the response variable is a scalar. Since we need to predict a vector of length 300 (i.e the min, avg, and max temperatures for each of the next 5 days for each of the 20 stations), we will need to train one GradientBoosted Tree for each entry in this vector. That is, we trained 300 different Gradient Boosted Trees one corresponding to each measurement, station, and day combination.  The model class below implements this idea by using the MultiOutputRegression model from sklearn.
+One important note is that Gradient Boosting can only be performed when the response variable is a scalar. Since we need to predict a vector of length 300 (i.e the min, avg, and max temperatures for each of the next 5 days for each of the 20 stations), we will need to train one Gradient Boosted Tree for each entry in this vector. That is, we trained 300 different Gradient Boosted Trees one corresponding to each measurement, station, and day combination.  The model class below implements this idea by using the MultiOutputRegression model from sklearn.
 
 
 ```python
@@ -817,7 +813,7 @@ window_size = 3
 grad_boosting = MetaPredictor(reg, window_size, keep_features)
 ```
 
-Note that we let each Gradient Boosting model use 20 regression Trees. Each Gradient Boosted tree was trained on the same covariates as the Regression-based Models. As with the Regression-based models, we can again reuse the MetaPredictor model class. 
+Note that we let each Gradient Boosting model use 20 regression Trees. Each model was trained on the same covariates as the Regression-based model. As with the Regression-based models, we can again reuse the MetaPredictor model class. 
 
 #### Random Forest
 
@@ -849,12 +845,9 @@ model_mses = {}
 for model_name, model in models.items():
     model_mses[model_name] = eval(model)
     print(model_name + " complete!")
-
-print(model_mses["PrevDay"])
 ```
 
-    LASSO complete!
-    {2017: [45.402877891586385, 70.99900595688898, 114.64673000120425, 146.46203679559758, 154.8089216799905, 144.5907452667, 81.22682397280404, 81.41570738536609, 75.89052311624877, 85.86414248373183], 2018: [69.18437761887202, 82.91322729376647, 84.20346315252685, 114.64838173831193, 89.51383665310496, 70.86215970833075, 49.910546981047034, 43.86593302073042, 35.95792076745599, 35.06655631444099], 2019: [59.460059667758166, 69.89599618281363, 41.25727917488, 34.087981447257086, 42.34453793290663, 60.37955079109493, 87.73728292472437, 90.80885415429934, 90.86529275698823, 81.42943825793505], 2020: [56.31366915243596, 38.95468861727107, 43.192096329467226, 50.55703776197468, 60.02995414229378, 58.12371180871987, 52.5798662494735, 54.83114578904507, 47.5905114315984, 59.60565191159435], 2021: [55.646880834384184, 77.81176400057099, 82.15132795702664, 108.35833980089579, 102.61431587886614, 118.67212486207578, 70.13120120370415, 67.5699139509277, 80.59015847064775, 83.42935654114032]}
+    PrevDay complete!
 
 
 Next, for each model and each year, we compute an average over the 10 MSEs to produce a single average MSE representing the performance of that model in that year. The code below is the function that takes as input the dictionary of MSE values for a particular model, and outputs the average MSE per year for that model. 
@@ -875,12 +868,7 @@ We apply the function above across the MSE dictionaries for each model to comput
 avg_mses = {}
 for model_name, mse_list in model_mses.items():
     avg_mses[model_name] = compute_avg_mse(mse_list)
-
-print(avg_mses["PrevDay"])
 ```
-
-    {2017: 113.1581879640379, 2018: 81.39315497797512, 2019: 97.44291151472791, 2020: 99.51453825096834, 2021: 115.48872792280513}
-
 
 |Model  | 2017  | 2018  | 2019  | 2020   | 2021   |
 |---|---|---|---|---|---|

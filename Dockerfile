@@ -17,6 +17,8 @@ COPY data ./data/
 COPY raw_data ./raw_data/
 COPY predictor ./predictor/
 COPY Makefile ./
+COPY daily_predictions ./daily_predictions/
+COPY notebooks ./notebooks/
 RUN make clean
 RUN make rawdata
 RUN make

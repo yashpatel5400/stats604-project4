@@ -22,8 +22,8 @@ import pandas as pd
 import numpy as np
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.linear_model import MultiTaskLassoCV
-from sklearn.linear_model import RidgeCV
-from sklearn.linear_model import LassoCV
+from sklearn.linear_model import Ridge
+from sklearn.linear_model import Lasso
 from sklearn.linear_model import LinearRegression
 from sklearn.exceptions import ConvergenceWarning
 warnings.simplefilter("ignore", category=ConvergenceWarning)
@@ -62,10 +62,10 @@ By Yash Patel, Vinod Raman, Seamus Somerstep, and Unique Subedi
 
 ## Introduction
 
-In this project, we are tasked with predicting the minimum, average, and maximum temperature for the next five days for 20 different weather stations. This report summarizes our data pipeline and the models we used to tackle this task. 
+In this project, we are tasked with predicting the minimum, average, and maximum temperatures for the next five days for 20 different weather stations. This report summarizes our data pipeline and the models we used to tackle this task.  We will first discuss the data collection and webscraping process as well as any pre-processing details on the data (including validation set up).  Next we will discuss the baseline models used including models based on historical averages and models based on the temperature of the previous day.  Finally, we discuss the variety of statistical models assesed and the performance on the validation set on each one.
 
 ## Data Sources and Preparation
-To leverage different strenghts of publicly available datasets, we used NOAA and Wunderground as our data sources in the following manners:
+To leverage the different strengths of publicly available datasets, we used NOAA and Wunderground as our data sources in the following manners:
 
 - NOAA: used to acquire historical data going back to 1960
 - Wunderground: used to acquired recent data, not restricted in timespan in theory but only used for the final year of analysis in the models presented
@@ -255,9 +255,9 @@ for station in utils.stations:
     fetch_wunderground_pd(station, predict_date=datetime.date.today(), future_days=0, past_days=wunderground_days)
 ```
 
-Using this fetches a list of the *hourly* measurements, i.e. temperature, wind speed, wind direction, etc... However, the final task was specificallly interested in measuring attributes at the daily time scale, meaning such granular measurements would not be useful. Unlike the hourly contents itself, the Wunderground site does *not* retrieve its daily summaries from an endpoint: after all, doing so would be redundant given that the latter can be directly computed from the former. Therefore, the Wunderground site both dynamically fetches the hourly content and then computes the daily summaries that are shown. We, therefore, had to replicate this ourselves to get the min, max, and average temperatures for training. 
+Using this fetches a list of the *hourly* measurements, i.e. temperature, wind speed, wind direction, etc... However, the final task was specifically interested in measuring attributes at the daily time scale, meaning such granular measurements would not be useful. Unlike the hourly contents itself, the Wunderground site does *not* retrieve its daily summaries from an endpoint: after all, doing so would be redundant given that the latter can be directly computed from the former. Therefore, the Wunderground site both dynamically fetches the hourly content and then computes the daily summaries that are shown. We, therefore, had to replicate this ourselves to get the min, max, and average temperatures for training. 
 
-This naively could be done simply by aggregating the contents to each unique day in the dataset and taking the min, max, and average across such datapoints. However, naively doing so produces incorrect answers, since the data are *returned in a single time zone* while the summative values are *computed based on the time zone of the station*, i.e. Alaska's min, max, and average will be taken in the Alaska/Anchroage time zone. Similar to the hourly data, the timezone could be queried using a separate endpoint, as follows:
+This naively could be done simply by aggregating the contents of each unique day in the dataset and taking the min, max, and average across such data points. However, naively doing so produces incorrect answers, since the data are *returned in a single time zone* while the summative values are *computed based on the time zone of the station*, i.e. Alaska's min, max, and average will be taken in the Alaska/Anchroage time zone. Similar to the hourly data, the timezone could be queried using a separate endpoint, as follows:
 
 
 ```python
@@ -336,7 +336,7 @@ for station in utils.stations:
 
 ## Evaluation Pipeline
 
-With the processed data, we wished to produce datasets for cross validation that parallel the final test set, which was to be Nov 30-Dec 10. The most natural evaluation test, therefore, would be looking at the same timeframe across multiple years. We start by fetching *all* the data necessary to construct this evaluation task. In particular, for a window of Nov 30-Dec 10 2021, we would need Wunderground data from Nov 30 **2020** - Dec 15 **2021**. Note that how far we extend back is arbitrary (training could have extended for more than one year) and that we also need data 5 days beyond the end of the evaluation period, since for *each day* in the evaluation window, we predict the following 5 days min, max, and average temperatures. Therefore, we start by fetching this overall dataset:
+With the processed data, we wished to produce datasets for cross-validation that parallel the final test set, which was to be Nov 30-Dec 10. The most natural evaluation test, therefore, would be looking at the same timeframe across multiple years. We start by fetching *all* the data necessary to construct this evaluation task. In particular, for a window of Nov 30-Dec 10 2021, we would need Wunderground data from Nov 30 **2020** - Dec 15 **2021**. Note that how far we extend back is arbitrary (training could have extended for more than one year) and that we also need data 5 days beyond the end of the evaluation period, since for *each day* in the evaluation window, we predict the following 5 days min, max, and average temperatures. Therefore, we start by fetching this overall dataset:
 
 
 ```python
@@ -363,7 +363,7 @@ def prepare_full_eval_data(start_eval_date, eval_len, wunderground_lookback):
     return full_eval_data
 ```
 
-From there, for each day in the evaluation window, we artifically chop off the dataset to simulate as if we were predicting from that day of interest. For example, if we are doing predictions on Dec 1 2021, we return the dataset view from Nov 30 2020 - noon EST Dec 1 2021. NOAA is returned up to 3 days from the prediction day, since we NOAA is known to lag by about 3 days from the current day. For each day, the "target" was then compiled to be the `[min, mean, max]` temperatures for the five days looking forward from the prediction day for each of the stations, as follows:
+From there, for each day in the evaluation window, we artificially chop off the dataset to simulate as if we were predicting from that day of interest. For example, if we are doing predictions on Dec 1 2021, we return the dataset view from Nov 30 2020 - noon EST Dec 1 2021. NOAA is returned up to 3 days from the prediction day, since we NOAA is known to lag by about 3 days from the current day. For each day, the "target" was then compiled to be the `[min, mean, max]` temperatures for the five days looking forward from the prediction day for each of the stations, as follows:
 
 
 ```python
@@ -491,7 +491,7 @@ In this section, we discuss simple, computationally-efficient baseline models fo
 
 #### Previous Day Predictor
 
-Our first baseline model, termed the Previous Day Predictor, exploits the idea that for every station, today's minimum, average, and maximum tempertures are good estimates for the minimum, average, and maximum temperates for *each* of the next five days. To this end, the Previous Day Predictor predicts for each station, for each of the next five days, today's minimum, average, and maximum temperture as the respective minimum, average, and maximum temperature for that day. That is, for each station, the Previous Day Predictor outputs a vector of 15 values consisting of today's minimum, average, and maximum temperatures repeated five times in a row. The model class below formalizes this idea in code. 
+Our first baseline model, termed the Previous Day Predictor, exploits the idea that for every station, today's minimum, average, and maximum tempertures are good estimates for the minimum, average, and maximum temperatures for *each* of the next five days. To this end, the Previous Day Predictor predicts for each station, for each of the next five days, today's minimum, average, and maximum temperture as the respective minimum, average, and maximum temperature for that day. That is, for each station, the Previous Day Predictor outputs a vector of 15 values consisting of today's minimum, average, and maximum temperatures repeated five times in a row. The model class below formalizes this idea in code. 
 
 
 ```python
@@ -532,19 +532,22 @@ class HistoricAveragePredictor(Predictor):
                 date_ = (current_date + pd.DateOffset(days=i))
                 stations_data.append(df[df.index == (date_.month, date_.day)].values.flatten())
            
+       
+             
+           
         stations_data = np.array(stations_data).flatten()
         return stations_data
 
 historic = HistoricAveragePredictor()
 ```
 
-Suppose we want to make a prediction for Dec 1. The rationale for this model is that the temperature of this year's Dec 1 will be similar to that of past Dec 1's. In particular, let $y_{i}$ be the maximum temperature of Dec 1 for year $i$. In NOAA dataset, we have $1941 \leq i \leq 2021$. Then, the prediction of maximum temperature of Dec 1, 2022 is 
+Suppose we want to make a prediction for Dec 1. The rationale for this model is that the temperature of this year's Dec 1 will be similar to that of past Dec 1's. In particular, let $y_{i}$ be the maximum temperature of Dec 1 for year $i$. In NOAA dataset, we have $1941 \leq i \leq 2021$. Then, the prediction of the maximum temperature of Dec 1, 2022 is 
 $$\frac{1}{2021-1941+1} \sum_{i=1941}^{2021}y_i.$$
-So, our baseline is to predict historic average of minimum, average, and maximum temperatures for each station on that particular day. Unfortunately, this baseline did not end up performing that well for us. 
+So, our baseline is to predict the historic average of minimum, average, and maximum temperatures for each station on that particular day. Unfortunately, this baseline did not end up performing that well for us. 
 
 #### Weighted Average Predictor
 
-The Weighted Average baseline predictor interpolates between the Previous Day Predictor and the Historical Average Predictor. At its core, it exploits the idea that tomorrow's temperature will be similar to today's temperature but the temperate 5 days from now will be more similar to the historical average temperature for that day. To this end, the Weighted Average Predictor computes a weighted average between today's temperature and the historical average temperature for each day and station. In other words, for each station, for each day, for each measurement (i.e., min, avg, max), the Weighted Average Predictor computes a weighted average between today's temperature and the historical average for the corresponding day. The model class below formalizes this idea in code. Note that it takes in as input a fixed set of mixing weights and uses the PreviousDayPredictor and the Historical Average Predictor as black-boxes.
+The Weighted Average baseline predictor interpolates between the Previous Day Predictor and the Historical Average Predictor. At its core, it exploits the idea that tomorrow's temperature will be similar to today's temperature but the temperature 5 days from now will be more similar to the historical average temperature for that day. To this end, the Weighted Average Predictor computes a weighted average between today's temperature and the historical average temperature for each day and station. In other words, for each station, for each day, for each measurement (i.e., min, avg, max), the Weighted Average Predictor computes a weighted average between today's temperature and the historical average for the corresponding day. The model class below formalizes this idea in code. Note that it takes in as input a fixed set of mixing weights and uses the PreviousDayPredictor and the Historical Average Predictor as black-boxes.
 
 
 ```python
@@ -581,7 +584,7 @@ class PrevDayHistoricalPredictor(Predictor):
 WA_pred = PrevDayHistoricalPredictor(weights=[1, 0.80, 0.60, 0.40, 0.20])
 ```
 
-Note that the Weighted Average Predictor uses the same fixed set of 5 mixing weights between today's temperature and the historical average temperature across all stations and measurements.  That is, there is a single mixing weight associated to each day out.  The table below provides the mixing weights used in the instantiation WA_pred. 
+Note that the Weighted Average Predictor uses the same fixed set of 5 mixing weights between today's temperature and the historical average temperature across all stations and measurements.  That is, there is a single mixing weight associated with each day out.  The table below provides the mixing weights used in the instantiation ```WA_pred```. 
 
 | Days out | Weight on Today's temperature  | Weight on Historical Average temperature |
 |----------|--------------------------------|------------------------------------------|
@@ -597,11 +600,11 @@ Observe that the weight on Today's temperature decreases as the number of days o
 
 ### Time Series Models
 
-ARIMA, which stands for Auto-regressive Integrated Moving Average, are general models for time series forecasting. The ARIMA model for stationary time series are linear regression models and one set of its predictors are lags of the variables to be predicted.  A key concept in time series modeling is stationarity, which roughly says that the statistical properties of the time series is constant over time. The time series may not be stationary as it is, so we have to apply some linear/non-linear transformation to the data to bring stationarity. For example, differencing is a popular technique to bring stationarity. Suppose $Y_t$ be the maximum temperature at time stamp $t$. Then, the time series $\{Y_t\}_{t \geq 1}$ may not be stationary, but the differenced variable $y_t = Y_{t} - Y_{t-1}$ perhaps is. Generally, we may have to use higher order of differencing. For example a second order differencing involves transforming time series to $y_{t} = (Y_{t} - Y_{t-1}) - (Y_{t-1} - Y_{t-2})$. On top of lagged difference of the variable, this model can also use the forecast errors in the past time steps, which are called moving average components. These errors denoted by $\{\epsilon_t\}_{t \geq 1}$ are assumped to to iid $\text{Normal}(0,1)$. Therefore, an ARIMA model with $p$ auto-regressive component, $d$ order of differencing, and $q$ moving average components is 
+ARIMA, which stands for Auto-regressive Integrated Moving Average, are general model for time series forecasting. The ARIMA model for stationary time series are linear regression model and one set of its predictors are lags of the variables to be predicted.  A key concept in time series modeling is stationarity, which roughly says that the statistical properties of the time series are constant over time. The time series may not be stationary as it is, so we have to apply some linear/non-linear transformation to the data to bring stationarity. For example, differencing is a popular technique to bring stationarity. Suppose $Y_t$ be the maximum temperature at time stamp $t$. Then, the time series $\{Y_t\}_{t \geq 1}$ may not be stationary, but the differenced variable $y_t = Y_{t} - Y_{t-1}$ perhaps is. Generally, we may have to use higher order of differencing. For example, a second order differencing involves transforming time series to $y_{t} = (Y_{t} - Y_{t-1}) - (Y_{t-1} - Y_{t-2})$. On top of lagged difference of the variable, this model can also use the forecast errors in the past time steps, which are called moving average components. These errors denoted by $\{\epsilon_t\}_{t \geq 1}$ are assumped to be iid $\text{Normal}(0,1)$. Therefore, an ARIMA model with $p$ auto-regressive component, $d$ order of differencing, and $q$ moving average components is 
 $$y_{t} = \mu + \beta_1 y_{t-1} + \beta_2 y_{t-2} +\ldots + \beta_{p} y_{t-p} + \theta_1 \epsilon_{t-1} + \ldots + \theta_{q} \epsilon_{t-q},$$
 where $y_{t} = (Y_{t}- Y_{t-1}) - \ldots - (Y_{t-d+1} - Y_{t-d}).$ We use ARIMA($p,d, q$) to denote this model.
 
-We trained three ARIMA models per station each for minimum, average, and maximum temperature. Thus, we have 60 ARIMA models all together for 20 stations. Each model forecast respective temperature for next five days. The model class below formalizes this idea in code. 
+We trained three ARIMA models per station each for minimum, average, and maximum temperature. Thus, we have 60 ARIMA models all together for 20 stations. Each model forecast respective temperatures for next five days. The model class below formalizes this idea in code. 
 
 
 ```python
@@ -645,11 +648,11 @@ We obtained decent results with ARIMA model, but not in par with our regression 
 
 ### Regression-Based Models
 
-In this section, we present prediction models based on Regression. 
+In this section, we present prediction models based on regression. 
 
 #### Features for Regression-Models
 
-For our regression-based models, we exclusively used data from Wunderground.  Data from this source is returned hourly so for feature preperation we aggregated the into daily data using the following calculations.  Average temperature is calculated as the average of the hourly temperatures while max/min temperature are calculated as the highest and lowest hourly temperature over the day respectively. Heat index, dew point, pressure and wind speed are aggregated in a similar manner.  Note that heat index is a human percieved temperature feature which combines heat with humidity.  The dew point is the temperature at which the relative humidity becomes 100%.  Finally wind direction was computed as the mode hourly wind direction from the possible categories of (CALM, S, SSE,SEE, E, NEE, NNE, N, NNW, NWW, W, SWW, SSW, VAR). Below is an aggregated table of the features used.
+For our regression-based models, we exclusively used data from Wunderground.  Data from this source is returned hourly so for feature preparation we aggregated the into daily data using the following calculations.  The average temperature is calculated as the average of the hourly temperatures while max/min temperature is calculated as the highest and lowest hourly temperature over the day respectively. Heat index, dew point, pressure and wind speed are aggregated in a similar manner.  Note that the heat index is a human perceived temperature feature that combines heat with humidity.  The dew point is the temperature at which the relative humidity becomes 100%.  Finally wind direction was computed as the mode hourly wind direction from the possible categories of (CALM, S, SSE,SEE, E, NEE, NNE, N, NNW, NWW, W, SWW, SSW, VAR). Below is an aggregated table of the features used.
 
 | Features                     |
 |------------------------------|
@@ -665,8 +668,26 @@ The code below gives a snapshot of the Wunderground dataframe for a particular s
 
 ```python
 data = utils.load_processed_data()
-print(data["PANC"]["wunderground"].head())
+# data["PANC"]["wunderground"].head()
+print(data["PANC"]["wunderground"].head()[:2])
 ```
+
+                temp_min  wspd_min  pressure_min  heat_index_min  dewPt_min  \
+    2021-10-05        35       0.0         29.76              35         27   
+    2021-10-06        42       7.0         29.35              42         32   
+    
+                temp_mean  wspd_mean  pressure_mean  heat_index_mean  dewPt_mean  \
+    2021-10-05  39.652174   5.043478      29.810435        39.652174   30.869565   
+    2021-10-06  43.875000  17.625000      29.519167        43.875000   34.000000   
+    
+                temp_max  wspd_max  pressure_max  heat_index_max  dewPt_max  \
+    2021-10-05        44      12.0         29.88              44         35   
+    2021-10-06        46      25.0         29.76              46         36   
+    
+               wdir_mode  
+    2021-10-05        NE  
+    2021-10-06        SE  
+
 
 #### Creating a Regression Dataset
 
@@ -690,7 +711,7 @@ def create_regression_data(data, window_size, features):
     return np.array(X), np.array(y), test_X
 ```
 
-The input ```data``` contains the Wunderground data for a specific station. The input ```window_size``` controls how many days of features should be included in each row of $X$, but this was fixed as $3$ (as mentioend above). The input ```features``` controls which features (i.e. columns of $X$) should be kept when constructing the regression dataset.  
+The input ```data``` contains the Wunderground data for a specific station. The input ```window_size``` controls how many days of features should be included in each row of $X$, but this was fixed as $3$ (as mentioned above). The input ```features``` control which features (i.e. columns of $X$) should be kept when constructing the regression dataset.  
 
 
 ```python
@@ -712,7 +733,7 @@ def create_regression_data(data, window_size, features):
 
 #### A Meta-Predictor
 
-In order to expediate the process of model exploration, we additionally implemented a MetaPredictor class which takes in as input a blackbox implementation of a regression model, and uses it to make predictions. That is, instead of having to create a a new model class for every type of Regression model we want to try, we can now simply instantiate and pass any regression model as input into the constructor of the MetaPredictor. The MetaPredictor will then train 20 copies of the specified regression model on the regression dataset created by calling ```create_regression_data``` for each station, and then use each of the trained models to make a prediction of the temperatures for the next $5$ days.  The model class below formalizes this idea in code.
+In order to expedite the process of model exploration, we additionally implemented a MetaPredictor class which takes in as input a blackbox implementation of a regression model, and uses it to make predictions. That is, instead of having to create a new model class for every type of Regression model we want to try, we can now simply instantiate and pass any regression model as input into the constructor of the MetaPredictor. The MetaPredictor will then train 20 copies of the specified regression model on the regression dataset created by calling ```create_regression_data``` for each station, and then use each of the trained models to make a prediction of the temperatures for the next $5$ days.  The model class below formalizes this idea in code.
 
 
 ```python
@@ -749,23 +770,23 @@ reg = LinearRegression()
 window_size = 3
 ols = MetaPredictor(reg, window_size, keep_features)
 
-reg = RidgeCV(alphas=[1e-4, 1e-3, 1e-2, 1e-1, 1])
+reg = Ridge(alpha = 10)
 window_size = 3
 ridge = MetaPredictor(reg, window_size, keep_features)
 
-reg = MultiTaskLassoCV(alphas=[1e-4, 1e-3, 1e-2, 1e-1, 1])
+reg = Lasso(alpha = 10)
 # reg = MultiOutputRegressor(LassoCV(alphas=[1e-4, 1e-3, 1e-2, 1e-1, 1]))
 window_size = 3
 lasso = MetaPredictor(reg, window_size, keep_features)
 ```
 
-Note that by construction, the Meta-Predictor will train one regression model per station. Each regression model will take in as input the covariates previously specified, and output a 15-dimension vector corresponding to its predictions of the minimum, maximum, and average temperatures for the next 5 days. That is, for each station, the Meta-Predictor class will train a multi-output regression model. By using RidgeCV and LassoCV and passing in a list of candidate values for $\alpha$, these sklearn model classes (RidgeCV, LassoCV) will automatically hyperparameter tune the regression model for each station. Once again, by construction, the Meta-Predictor will create a new dataset and train a new regression model for each station every time the predict function is called. 
+Note that by construction, the Meta-Predictor will train one regression model per station. Each regression model will take in as input the covariates previously specified, and output a 15-dimension vector corresponding to its predictions of the minimum, maximum, and average temperatures for the next 5 days. That is, for each station, the Meta-Predictor class will train a multi-output regression model. The choice of $\alpha$ (regularization strength) for both Ridge and Lasso was selected using the same cross validation criteria used througout this report.  Alpha values were considered from the list (0.0001, 0.001, 0.01, 0.1, 1, 10, 100).  For Lasso the optimization routine only converged if $\alpha \geq 10$ so only such values were considered for this particular model. Once again, by construction, the Meta-Predictor will create a new dataset and train a new regression model for each station every time the predict function is called. 
 
 ##### Multilayer Perceptron (MLP)
 
 A multilayer perceptron is a fully connected neural network. In particular, we used a two layer perceptron
 $$y  = W_2\, \sigma(\, \sigma(W_1x + b_1) +b_2 ), $$
-where the activation is relu. Each hidden layer is of dimension $20$ and the output layer has $15$ dimensions for min, average, and max of next five days. Since we trained one MLP model for one station, we trained 20 MLP regressors alltogether. The code below formalizes this idea by using the MLPRegressor class from sklearn and the aforementioned MetaPredictor class.
+where the activation is relu. Each hidden layer is of dimension $20$ and the output layer has $15$ dimensions for min, average, and max of next five days. Since we trained one MLP model for one station, we trained 20 MLP regressors altogether. The code below formalizes this idea by using the MLPRegressor class from sklearn and the aforementioned MetaPredictor class.
 
 
 ```python
@@ -775,13 +796,13 @@ window_size = 3
 mlp = MetaPredictor(reg, window_size, keep_features)
 ```
 
-One main attraction of MLPs are that it allows for multitask regressions based on shared representations. It is particularly relevant here because the assumption of shared representation seems reasonable if we are predictive the response of same qualitative nature, temperature. We obtained pretty good results with this model, however, similar performance was obtained with ensemble methods with much less training time. So, we ended up choosing ensemble based models for deployment.
+One main attraction of MLPs is that it allows for multitask regressions based on shared representations. It is particularly relevant here because the assumption of shared representation is reasonable if we are predicting the response of same qualitative nature, temperature. We obtained pretty good results with this model, however, similar performance was obtained with ensemble methods with much less training time. So, we ended up choosing ensemble based models for deployment.
 
 ### Ensemble Methods
 
-Ensemble methods, like Boosting and Bagging, are powerful prediction models for tabular data that are known to generalize well in practice. These types of models contain sub-models of their own (like Regression trees) and make predictions by cleverly training and aggregating the predictions of these sub-models. In this section, we build weather prediction models based on Gradient Boosting and Random Forests - two popular Ensemble methods. 
+Ensemble methods, like Boosting and Bagging, are powerful prediction models for tabular data that are known to generalize well in practice. These types of models contain sub-models of their own (like Regression trees) and make predictions by cleverly training and aggregating the predictions of these sub-models. In this section, we build weather prediction models based on Gradient Boosting and Random Forests - two popular ensemble methods. 
 
-#### Gradient Boosted Trees
+#### Gradient-Boosted Trees
 
 Gradient Boosted Trees are an important class of Ensemble methods that trains a sequence of dependent Regression Trees. More specifically, Gradient Boosting trains Regression Trees sequentially, where the next Regression Tree is trained to correct the mistakes of the previously trained Tree. The Figure below captures this idea visually. 
 
@@ -796,7 +817,7 @@ window_size = 3
 grad_boosting = MetaPredictor(reg, window_size, keep_features)
 ```
 
-Note that we let each Gradient Boosting model use 20 regression Trees. Each Gradient Boosted tree was trained on the same covariates as the Regression-based Models. Like for the Regression-based models, we can again reuse the MetaPredictor model class. 
+Note that we let each Gradient Boosting model use 20 regression Trees. Each Gradient Boosted tree was trained on the same covariates as the Regression-based Models. As with the Regression-based models, we can again reuse the MetaPredictor model class. 
 
 #### Random Forest
 
@@ -804,7 +825,7 @@ In addition to Gradient Boosted Trees, we also implemented a prediction model us
 
 ![](random-forest-diagram.png)
 
-In addition, while Gradient Boosting can be used to make predictions when the response variable is a scalar, Random Forests can be trained and used for tasks when the response variable is a vector. To this end, we trained one Random Forest for each station, each of which outputs 15 predictions corresponding to the minimum, average, and maximum temperatures for the next 5 days. Thus, only a total of 20 Random Forest were trained. Each Random Forest used 100 Regression Trees of depth 5. In addition, the same covariates as in the Regression models and Gradient Boosting were also used for each of the Random Forest Models. The model class below formalizes this idea in code. Note that like the Regression-based models and Gradient Boosting, we can also use the Meta-Predictor here by passing in a Random Forest regression model into the constructor of the Meta-Predictor model class. 
+In addition, while Gradient Boosting can be used to make predictions when the response variable is a scalar, Random Forests can be trained and used for tasks when the response variable is a vector. To this end, we trained one Random Forest for each station, each of which outputs 15 predictions corresponding to the minimum, average, and maximum temperatures for the next 5 days. Thus, only a total of 20 Random Forests were trained. Each Random Forest used 100 Regression Trees of depth 5. In addition, the same covariates as in the Regression models and Gradient Boosting were also used for each of the Random Forest Models. The model class below formalizes this idea in code. Note that like the Regression-based models and Gradient Boosting, we can also use the Meta-Predictor here by passing in a Random Forest regression model into the constructor of the Meta-Predictor model class. 
 
 
 ```python
@@ -815,33 +836,28 @@ random_forest = MetaPredictor(reg, window_size, keep_features)
 
 ## Model Selection and Evaluation
 
-In order to select a model for deployment, we evaluated each of the models specified previously on a ten day evaluation window from Nov 30 - Dec 10 for the years of 2017, 2018, 2019, 2020, and 2021. More specifically, we simulated the exact same prediction process for 10 days between Nov 30 - Dec 10th across 5 different years. For each year and each model, we compute the average Mean Squared Error of that model's predictions for each of the 10 days. That is, for a given model, year, and day, the mean squared error was computed between the 300 temperature measurements predicted by the model and the true 300 temperature measurements corresponding to the min, avg, and max temperatures across all 20 stations for the next 5 days. This means, that for one particular year, each model had 10 MSE values, one per day in that year. The code below computes these MSEs for each model across all the years. The MSE values for the Previous Day Predictor are printed as an example of what the output looks like. 
+In order to select a model for deployment, we evaluated each of the models specified previously on a ten-day evaluation window from Nov 30 - Dec 10 for the years of 2017, 2018, 2019, 2020, and 2021. More specifically, we simulated the exact same prediction process for 10 days between Nov 30 - Dec 10th across 5 different years. For each year and each model, we compute the average Mean Squared Error (MSE) of that model's predictions for each of the 10 days. That is, for a given model, year, and day, the MSE was computed between the 300 temperature measurements predicted by the model and the true 300 temperature measurements corresponding to the min, avg, and max temperatures across all 20 stations for the next 5 days. This means, that for one particular year, each model had 10 MSE values, one per day in that year. The code below computes and prints these MSE values for the PrevDay model across all the years.
 
 
 ```python
 models = {"PrevDay":prev_day, "Historic":historic, 
 "WA":WA_pred, "ARIMA":arima, "OLS":ols, "LASSO":lasso, 
-"Ridge":ridge, "MLP":mlp, "GB":grad_boosting, "RF":random_forest}
-models = {"LASSO":lasso}
+"Ridge":ridge, "MLP":mlp, "GB":grad_boosting, "RF":random_forest} #all models
+models = {"PrevDay":prev_day} # but just using prevday for the report
 
 model_mses = {}
 for model_name, model in models.items():
     model_mses[model_name] = eval(model)
     print(model_name + " complete!")
 
-print(model_mses["LASSO"])
+print(model_mses["PrevDay"])
 ```
 
+    LASSO complete!
+    {2017: [45.402877891586385, 70.99900595688898, 114.64673000120425, 146.46203679559758, 154.8089216799905, 144.5907452667, 81.22682397280404, 81.41570738536609, 75.89052311624877, 85.86414248373183], 2018: [69.18437761887202, 82.91322729376647, 84.20346315252685, 114.64838173831193, 89.51383665310496, 70.86215970833075, 49.910546981047034, 43.86593302073042, 35.95792076745599, 35.06655631444099], 2019: [59.460059667758166, 69.89599618281363, 41.25727917488, 34.087981447257086, 42.34453793290663, 60.37955079109493, 87.73728292472437, 90.80885415429934, 90.86529275698823, 81.42943825793505], 2020: [56.31366915243596, 38.95468861727107, 43.192096329467226, 50.55703776197468, 60.02995414229378, 58.12371180871987, 52.5798662494735, 54.83114578904507, 47.5905114315984, 59.60565191159435], 2021: [55.646880834384184, 77.81176400057099, 82.15132795702664, 108.35833980089579, 102.61431587886614, 118.67212486207578, 70.13120120370415, 67.5699139509277, 80.59015847064775, 83.42935654114032]}
 
-```python
-models = {"PrevDay":prev_day, "Historic":historic, 
-"WA":WA_pred, "ARIMA":arima, "OLS":ols, 
-"Ridge":ridge, "MLP":mlp, "GB":grad_boosting, "RF":random_forest}
-for model_name, model in models.items():
-    model_mses[model_name] = eval(model)
-```
 
-Next, for each model and each year, we compute an average over the 10 MSEs to produce a single average MSE representing the performance of that model in that year. The code below is function that takes as input the dictionary of MSE values for a particular model, and outputs the average MSE per year for that model. 
+Next, for each model and each year, we compute an average over the 10 MSEs to produce a single average MSE representing the performance of that model in that year. The code below is the function that takes as input the dictionary of MSE values for a particular model, and outputs the average MSE per year for that model. 
 
 
 ```python
@@ -860,8 +876,11 @@ avg_mses = {}
 for model_name, mse_list in model_mses.items():
     avg_mses[model_name] = compute_avg_mse(mse_list)
 
-print(avg_mses["LASSO"])
+print(avg_mses["PrevDay"])
 ```
+
+    {2017: 113.1581879640379, 2018: 81.39315497797512, 2019: 97.44291151472791, 2020: 99.51453825096834, 2021: 115.48872792280513}
+
 
 |Model  | 2017  | 2018  | 2019  | 2020   | 2021   |
 |---|---|---|---|---|---|
@@ -870,8 +889,8 @@ print(avg_mses["LASSO"])
 |Weighted Avg. |133.27 | 87.54  | 104.96  | 80.22 | 113.01   |
 |ARIMA|  168.76| 92.86 | 108.16   | 124.9   | 146.57 |
 |OLS |   108  | 65.7  | 66.9  | 56.6   | 85.2 |
-|LASSO|  100.1  | 67.6  | 65.8   | 52.17   | 84.69 |
-|Ridge | 104.5 |65.2 | 67.1  | 54.1  | 84.3   |
+|LASSO|  113.9  | 71.8  | 62.85   | 57.29   | 85.3 |
+|Ridge | 101.16 |67.1 | 65.9  | 52.8  | 83.76   |
 |MLP |  111.15 | 80.32 |67.14 |61.17 |105.18
 |Gradient Boosting |  101.08 | 77.38 | 54.30 |60.84 |85.81
 |Random Forest |  92.36 | 64.87 | 55.34 | 52.71 |83.97
@@ -886,8 +905,12 @@ print(avg_mses["LASSO"])
 
 
 
-Based on the Table above, we find that the Random Forest model consistently outperfoms other models across all 5 years. This led us to deploy it in practice. 
+Using the Table above, we found that the Random Forest model consistently outperfoms other models across all 5 years. This led us to deploy the Random Forest model in practice. 
 
 ## Conclusion
 
-Although weather is caused by the atmospheric change that can, in principle, be described by laws of physics, we found that statistically modeling of the weather can be rather challenging. One key challenge is including all the  atmospheric factors that determines the weather in our statistical model. Nevertheless, we found that the weather can be predicted with a reasonable accuracy even with a few macro factors using regression-based and ensemble models. With right set of features and large training data, it may be possible to predict temperature fairly accurately by just using highly expressive statistical models. Finally, combining statistical models with physics-based constraints is an exciting future direction for weather prediction.
+Although the weather is caused by atmospheric change that can, in principle, be described by laws of physics, we found that statistical modeling of the weather can be rather challenging. One key challenge is including all the  atmospheric factors that determine the weather in our statistical model. Nevertheless, we found that the weather can be predicted with  reasonable accuracy even with a few macro factors using regression-based and ensemble models. With the right set of features and large training data, it may be possible to predict temperature fairly accurately by just using highly expressive statistical models. Finally, combining statistical models with physics-based constraints is an exciting future direction for weather prediction. 
+
+Cross validation was set up so as to replicate the exact evaluation criteria of this project.  Specifically, for the years 2017-2021 we trained our possible models on the previous years data and then performed predictions for the dates Nov 30 - Dec 10.  The total MSE across stations, days, and max/min/avg temperature was computed to produce a final error metric for a given year.
+
+In particular, we found that ensemble models such as random forest, and gradient boosting as well as regression based models such as OLS and MLP were able to outperform naive baseline models on our validation set.  Interestingly, time series based models did not perform as well.  In the end, the ensemble model random forest gave the best cross validation performance and was selected for our final prediction.
